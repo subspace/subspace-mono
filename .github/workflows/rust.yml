@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - 'muhammad/ci-test'
-  # pull_request:
+#  pull_request:
   workflow_dispatch:
-  # merge_group:
+#  merge_group:
 
 concurrency:
   group: rust-${{ github.workflow }}-${{ github.ref }}
@@ -21,8 +21,10 @@ env:
 
 jobs:
   cargo-fmt:
-#    runs-on: [self-hosted, linux, x64, ubuntu-latest]
-    runs-on: runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64
+    runs-on: ${{ fromJson(github.repository_owner == 'autonomys' &&
+      '"runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64"' ||
+      '"ubuntu-22.04"') }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -33,7 +35,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: runs-on/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -44,3 +46,211 @@ jobs:
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
+
+  cargo-clippy:
+    strategy:
+      matrix:
+        os: ${{ fromJson(github.repository_owner == 'autonomys' &&
+          '[
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64",
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows22-base-x64",
+            ["self-hosted", "macos-14-arm64"]
+          ]' ||
+          '["ubuntu-22.04", "macos-14", "windows-2022"]') }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      # On macOS, we need a proper Clang version, not Apple's custom version without wasm32 support
+      - name: Install LLVM and Clang for macOS
+        uses: KyleMayes/install-llvm-action@dec985c8d7b46a2f363ea1a78f660c946a3349ea # v2.0.1
+        with:
+          env: true
+          version: 17
+        if: runner.os == 'macOS'
+
+      # Because macOS, see https://andreasfertig.blog/2021/02/clang-and-gcc-on-macos-catalina-finding-the-include-paths/
+      - name: Configure C compiler macOS
+        run: |
+          echo "SDKROOT=$(xcrun --show-sdk-path)" >> $GITHUB_ENV
+        if: runner.os == 'macOS'
+
+      - name: Install glibtoolize (macOS)
+        run: brew install libtool
+        if: runner.os == 'macOS'
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Needed for hwloc
+      - name: Install automake (macOS)
+        run: brew install automake
+        if: runner.os == 'macOS'
+
+      - name: CUDA toolchain
+        uses: Jimver/cuda-toolkit@9b295696791d75d658d8de64c4a85097ad8abeaf # v0.2.16
+        with:
+          cuda: '12.4.1'
+          method: network
+          sub-packages: '["nvcc", "cudart"]'
+        if: runner.os == 'Linux' || runner.os == 'Windows'
+
+      - name: Configure ROCm cache (Windows)
+        uses: runs-on/cache@v4
+        id: rocm-cache
+        with:
+          path: C:\Program Files\AMD\ROCm
+          key: ${{ runner.os }}-rocm
+        if: runner.os == 'Windows'
+
+      - name: ROCm toolchain
+        run: |
+          ROCM_VERSION=6.2.2
+          sudo mkdir -p --mode=0755 /etc/apt/keyrings
+          curl -L https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/$ROCM_VERSION jammy main" | sudo tee /etc/apt/sources.list.d/rocm.list > /dev/null
+          echo -e "Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600" | sudo tee /etc/apt/preferences.d/rocm-pin-600 > /dev/null
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends rocm-hip-runtime-dev
+          echo "/opt/rocm/lib" | sudo tee /etc/ld.so.conf.d/rocm.conf > /dev/null
+          sudo ldconfig
+        if: runner.os == 'Linux'
+
+      - name: ROCm toolchain
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest -Uri https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-24.Q3-WinSvr2022-For-HIP.exe -OutFile "${env:RUNNER_TEMP}\HIP-SDK-Installer.exe"
+          Start-Process "${env:RUNNER_TEMP}\HIP-SDK-Installer.exe" -ArgumentList '-install' -NoNewWindow -Wait
+          Remove-Item "${env:RUNNER_TEMP}\HIP-SDK-Installer.exe"
+        if: runner.os == 'Windows' && steps.rocm-cache.outputs.cache-hit != 'true'
+
+      - name: Configure cache
+        uses: runs-on/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: cargo clippy
+        run: |
+          cargo -Zgitoxide -Zgit clippy --locked --all-targets --features runtime-benchmarks -- -D warnings
+        if: runner.os == 'macOS'
+
+      - name: cargo clippy
+        run: |
+          cargo -Zgitoxide -Zgit clippy --locked --all-targets --features runtime-benchmarks,cuda -- -D warnings
+        if: runner.os == 'Linux' || runner.os == 'Windows'
+
+      - name: cargo clippy (ROCm)
+        run: |
+          cargo -Zgitoxide -Zgit clippy --locked --all-targets --features rocm -- -D warnings
+        if: runner.os == 'Linux'
+
+      - name: cargo clippy (ROCm)
+        env:
+          # Why `PROGRA~1` instead of `Program Files`? Because Windows!
+          HIPCC: C:\PROGRA~1\AMD\ROCm\6.1\bin\hipcc.bin.exe
+        run: |
+          cargo -Zgitoxide -Zgit clippy --locked --all-targets --features rocm -- -D warnings
+        if: runner.os == 'Windows'
+
+  cargo-docs:
+    runs-on: ${{ fromJson(github.repository_owner == 'autonomys' &&
+      '"runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64"' ||
+      '"ubuntu-22.04"') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure cache
+        uses: runs-on/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check Documentation
+        run: cargo -Zgitoxide -Zgit doc --locked --all --no-deps --lib
+        env:
+          RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links -D rustdoc::private_intra_doc_links"
+
+  cargo-test:
+    strategy:
+      matrix:
+        os: ${{ fromJson(github.repository_owner == 'autonomys' &&
+          '[
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64",
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows22-base-x64",
+            ["self-hosted", "macos-14-arm64"]
+          ]' ||
+          '["ubuntu-22.04", "macos-14", "windows-2022"]') }}
+    runs-on: ${{ matrix.os }}
+    # Don't use the full 6 hours if a test hangs
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      # On macOS, we need a proper Clang version, not Apple's custom version without wasm32 support
+      - name: Install LLVM and Clang for macOS
+        uses: KyleMayes/install-llvm-action@dec985c8d7b46a2f363ea1a78f660c946a3349ea # v2.0.1
+        with:
+          env: true
+          version: 17
+        if: runner.os == 'macOS'
+
+      # Because macOS, see https://andreasfertig.blog/2021/02/clang-and-gcc-on-macos-catalina-finding-the-include-paths/
+      - name: Configure C compiler macOS
+        run: |
+          echo "SDKROOT=$(xcrun --show-sdk-path)" >> $GITHUB_ENV
+        if: runner.os == 'macOS'
+
+      - name: Install glibtoolize (macOS)
+        run: brew install libtool
+        if: runner.os == 'macOS'
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Needed for hwloc
+      - name: Install automake (macOS)
+        run: brew install automake
+        if: runner.os == 'macOS'
+
+      - name: Configure cache
+        uses: runs-on/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@07a34f8347b1eeb5f5469cdfa451b0a5db2ae4e8 # 2.38.4
+        with:
+          tool: cargo-nextest
+
+      - name: cargo nextest run --locked
+        run: |
+          cargo -Zgitoxide -Zgit nextest run --locked
