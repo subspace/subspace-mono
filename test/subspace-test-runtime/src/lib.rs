@@ -1125,7 +1125,9 @@ impl FraudProofStorageKeyProvider<NumberFor<Block>> for StorageKeyProvider {
             FraudProofStorageKeyRequest::DomainAllowlistUpdates(domain_id) => {
                 Messenger::domain_allow_list_update_storage_key(domain_id)
             }
-            FraudProofStorageKeyRequest::BlockDigest => sp_domains::system_digest_final_key(),
+            FraudProofStorageKeyRequest::DomainRuntimeUpgrades => {
+                pallet_domains::DomainRuntimeUpgrades::<Runtime>::hashed_key().to_vec()
+            }
             FraudProofStorageKeyRequest::RuntimeRegistry(runtime_id) => {
                 pallet_domains::RuntimeRegistry::<Runtime>::hashed_key_for(runtime_id)
             }

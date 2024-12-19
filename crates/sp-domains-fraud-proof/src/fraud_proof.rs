@@ -497,9 +497,11 @@ pub struct InvalidExtrinsicsRootProof {
     /// The combined storage proofs used during verification
     pub invalid_inherent_extrinsic_proofs: InvalidInherentExtrinsicDataProof,
 
-    /// The individual storage proofs used during verification
-    // TODO: combine these proofs into `InvalidInherentExtrinsicDataProof`
-    pub invalid_inherent_extrinsic_proof: InvalidInherentExtrinsicProof,
+    /// Domain runtime code upgraded (or "not upgraded") storage proof
+    pub domain_runtime_upgraded_proof: DomainRuntimeUpgradedProof,
+
+    /// Storage proof for a change to the chains that are allowed to open a channel with each domain
+    pub domain_chain_allowlist_proof: DomainChainsAllowlistUpdateStorageProof,
 
     /// Optional sudo extrinsic call storage proof
     pub domain_sudo_call_proof: DomainSudoCallStorageProof,

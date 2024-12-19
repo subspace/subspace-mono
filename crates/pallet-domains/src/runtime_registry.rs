@@ -54,6 +54,7 @@ impl Default for DomainRuntimeInfo {
     }
 }
 
+// TODO: unify this with fraud proofs DomainRuntimeUpgradeEntry
 #[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq)]
 pub struct DomainRuntimeUpgradeEntry<Hash> {
     // The consensus block hash at which the upgrade happened

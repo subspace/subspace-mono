@@ -21,11 +21,6 @@
 
 pub mod weights;
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
 use codec::{Codec, Decode, Encode};
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::sp_runtime::SaturatedConversion;

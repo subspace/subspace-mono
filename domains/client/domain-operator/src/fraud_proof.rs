@@ -389,12 +389,18 @@ where
             &self.storage_key_provider,
         )?;
 
-        let invalid_inherent_extrinsic_proof = InvalidInherentExtrinsicProof::generate(
+        let domain_runtime_upgraded_proof = DomainRuntimeUpgradedProof::generate(
             &self.storage_key_provider,
             self.consensus_client.as_ref(),
-            domain_id,
             consensus_block_hash,
             maybe_runtime_id,
+        )?;
+
+        let domain_chain_allowlist_proof = DomainChainsAllowlistUpdateStorageProof::generate(
+            self.consensus_client.as_ref(),
+            consensus_block_hash,
+            domain_id,
+            &self.storage_key_provider,
         )?;
 
         let domain_sudo_call_proof = DomainSudoCallStorageProof::generate(
@@ -412,7 +418,8 @@ where
             proof: FraudProofVariant::InvalidExtrinsicsRoot(InvalidExtrinsicsRootProof {
                 valid_bundle_digests,
                 invalid_inherent_extrinsic_proofs,
-                invalid_inherent_extrinsic_proof,
+                domain_runtime_upgraded_proof,
+                domain_chain_allowlist_proof,
                 domain_sudo_call_proof,
             }),
         };
