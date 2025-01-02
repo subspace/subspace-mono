@@ -33,10 +33,10 @@ use sp_domains::{
 };
 use sp_domains_fraud_proof::fraud_proof::FraudProof;
 use sp_runtime::traits::{
-    AccountIdConversion, BlakeTwo256, BlockNumberProvider, Hash as HashT, IdentityLookup, One,
+    AccountIdConversion, BlakeTwo256, BlockNumberProvider, Hash as HashT, IdentityLookup, One, Zero,
 };
 use sp_runtime::transaction_validity::TransactionValidityError;
-use sp_runtime::{BuildStorage, OpaqueExtrinsic, Saturating};
+use sp_runtime::{BuildStorage, OpaqueExtrinsic};
 use sp_version::RuntimeVersion;
 use subspace_core_primitives::U256 as P256;
 use subspace_runtime_primitives::{HoldIdentifier, Moment, StorageFee, SSC};
@@ -430,14 +430,20 @@ impl sp_core::traits::ReadRuntimeVersion for ReadRuntimeVersion {
 }
 
 pub(crate) fn run_to_block<T: Config>(block_number: BlockNumberFor<T>, parent_hash: T::Hash) {
-    // Finalize previous block
-    crate::Pallet::<T>::on_finalize(block_number.saturating_sub(One::one()));
+    // Finalize the previous block
+    // on_finalize() does not run on the genesis block
+    if block_number > One::one() {
+        crate::Pallet::<T>::on_finalize(block_number - One::one());
+    }
     frame_system::Pallet::<T>::finalize();
 
     // Initialize current block
     frame_system::Pallet::<T>::set_block_number(block_number);
     frame_system::Pallet::<T>::initialize(&block_number, &parent_hash, &Default::default());
-    crate::Pallet::<T>::on_initialize(block_number);
+    // on_initialize() does not run on the genesis block
+    if block_number > Zero::zero() {
+        crate::Pallet::<T>::on_initialize(block_number);
+    }
 }
 
 pub(crate) fn register_genesis_domain(creator: u128, operator_ids: Vec<OperatorId>) -> DomainId {
