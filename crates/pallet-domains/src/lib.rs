@@ -1865,8 +1865,7 @@ mod pallet {
             let parent_number = block_number - One::one();
             let parent_hash = frame_system::Pallet::<T>::block_hash(parent_number);
 
-            // Record any previous domain runtime upgrade in `DomainRuntimeUpgradeRecords` and then do the
-            // domain runtime upgrade scheduled in the current block
+            // Record any previous domain runtime upgrades in `DomainRuntimeUpgradeRecords`
             for runtime_id in DomainRuntimeUpgrades::<T>::take() {
                 let reference_count = RuntimeRegistry::<T>::get(runtime_id)
                     .expect("Runtime object must be present since domain is insantiated; qed")
@@ -1883,6 +1882,11 @@ mod pallet {
                     });
                 }
             }
+            // Set DomainRuntimeUpgrades to an empty list. (If there are no runtime upgrades
+            // scheduled in the current block, we can generate a proof the list is empty.)
+            DomainRuntimeUpgrades::<T>::set(Vec::new());
+            // Do the domain runtime upgrades scheduled in the current block, and record them in
+            // DomainRuntimeUpgrades
             do_upgrade_runtimes::<T>(block_number);
 
             // Store the hash of the parent consensus block for domains that have bundles submitted
@@ -1912,7 +1916,7 @@ mod pallet {
             // If this consensus block will derive any domain block, gather the necessary storage
             // for potential fraud proof usage
             if SuccessfulBundles::<T>::iter_keys().count() > 0
-                || DomainRuntimeUpgrades::<T>::exists()
+                || !DomainRuntimeUpgrades::<T>::get().is_empty()
             {
                 let extrinsics_shuffling_seed = Randomness::from(
                     Into::<H256>::into(Self::extrinsics_shuffling_seed()).to_fixed_bytes(),
