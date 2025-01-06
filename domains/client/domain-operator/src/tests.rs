@@ -4768,7 +4768,7 @@ async fn test_bad_receipt_chain() {
         ) && fp.targeted_bad_receipt_hash() == bad_receipt_hash
     });
 
-    // Produce more bundle with bad ER that use previous bad ER as parent
+    // Produce more bundles with bad ERs that use the previous bad ER as an ancestor
     let mut parent_bad_receipt_hash = bad_receipt_hash;
     let mut bad_receipt_descendants = vec![];
     for _ in 0..7 {
@@ -4822,7 +4822,7 @@ async fn test_bad_receipt_chain() {
         .inspect_err(|_| error!("fraud proof was not created before the timeout"))
         .is_err();
 
-    // The first bad ER should be pruned and its descendants are marked as pending to prune
+    // The first bad ER should be pruned, and its descendants marked as pending to prune
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
@@ -4848,7 +4848,7 @@ async fn test_bad_receipt_chain() {
         .head_receipt_number(ferdie_best_hash, EVM_DOMAIN_ID)
         .unwrap();
     assert_eq!(head_domain_number - head_receipt_number, 9);
-    // The previou bundle will be rejected as there is a receipt gap
+    // The previous bundle will be rejected as there is a receipt gap
     match ferdie
         .submit_transaction(bundle_to_tx(stale_bundle))
         .await
@@ -4903,7 +4903,7 @@ async fn test_bad_receipt_chain() {
     let bob_best_number = bob.client.info().best_number;
     assert_eq!(alice_best_number, bob_best_number);
 
-    // Bad receipt should be pruned as singletone receipt submitting
+    // The bad receipt and its descendants should be pruned immediately
     for receipt_hash in vec![bad_receipt_hash]
         .into_iter()
         .chain(bad_receipt_descendants)
@@ -4914,7 +4914,7 @@ async fn test_bad_receipt_chain() {
         assert!(!ferdie.does_receipt_exist(receipt_hash).unwrap());
     }
 
-    // The receipt gap should be fill up
+    // The receipt gap should be filled up
     let ferdie_best_hash = ferdie.client.info().best_hash;
     let head_domain_number = ferdie
         .client
