@@ -66,7 +66,7 @@ where
     let InvalidExtrinsicsRootProof {
         valid_bundle_digests,
         invalid_inherent_extrinsic_proofs,
-        domain_runtime_upgraded_proof,
+        domain_runtime_single_upgrade_proof,
         domain_chain_allowlist_proof,
         domain_sudo_call_proof,
     } = fraud_proof;
@@ -79,7 +79,7 @@ where
         )?;
 
     let maybe_domain_runtime_upgrade =
-        domain_runtime_upgraded_proof.verify::<CBlock, SKP>(runtime_id, &state_root)?;
+        domain_runtime_single_upgrade_proof.verify::<CBlock, SKP>(runtime_id, &state_root)?;
 
     let domain_chain_allowlist = <DomainChainsAllowlistUpdateStorageProof as BasicStorageProof<
         CBlock,

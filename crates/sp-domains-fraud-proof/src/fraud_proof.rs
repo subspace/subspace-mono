@@ -497,8 +497,8 @@ pub struct InvalidExtrinsicsRootProof {
     /// The combined storage proofs used during verification
     pub invalid_inherent_extrinsic_proofs: InvalidInherentExtrinsicDataProof,
 
-    /// Domain runtime code upgraded (or "not upgraded") storage proof
-    pub domain_runtime_upgraded_proof: DomainRuntimeUpgradedProof,
+    /// A single domain runtime code upgrade (or "not upgraded") storage proof
+    pub domain_runtime_single_upgrade_proof: DomainRuntimeSingleUpgradeProof,
 
     /// Storage proof for a change to the chains that are allowed to open a channel with each domain
     pub domain_chain_allowlist_proof: DomainChainsAllowlistUpdateStorageProof,

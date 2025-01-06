@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use domain_block_builder::{BlockBuilder, RecordProof};
 use domain_runtime_primitives::opaque::AccountId;
 use domain_runtime_primitives::CheckExtrinsicsValidityError;
-use sc_client_api::{AuxStore, BlockBackend, ProofProvider};
+use sc_client_api::{AuxStore, BlockBackend, ProofProvider, StorageKey};
 use sc_domains::FPStorageKeyProvider;
 use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
@@ -12,10 +12,9 @@ use sp_core::traits::CodeExecutor;
 use sp_core::H256;
 use sp_domain_digests::AsPredigest;
 use sp_domains::core_api::DomainCoreApi;
-use sp_domains::proof_provider_and_verifier::StorageProofProvider;
+use sp_domains::proof_provider_and_verifier::{StorageProofProvider, StorageProofVerifier};
 use sp_domains::{
-    DomainId, DomainsApi, DomainsDigestItem, ExtrinsicDigest, HeaderHashingFor, InvalidBundleType,
-    RuntimeId,
+    DomainId, DomainsApi, ExtrinsicDigest, HeaderHashingFor, InvalidBundleType, RuntimeId,
 };
 use sp_domains_fraud_proof::execution_prover::ExecutionProver;
 use sp_domains_fraud_proof::fraud_proof::{
@@ -29,7 +28,7 @@ use sp_domains_fraud_proof::FraudProofApi;
 use sp_messenger::MessengerApi;
 use sp_mmr_primitives::MmrApi;
 use sp_runtime::generic::BlockId;
-use sp_runtime::traits::{Block as BlockT, Header as HeaderT, NumberFor, One};
+use sp_runtime::traits::{Block as BlockT, HashingFor, Header as HeaderT, NumberFor, One};
 use sp_runtime::{Digest, DigestItem};
 use sp_trie::LayoutV1;
 use std::marker::PhantomData;
@@ -389,7 +388,7 @@ where
             &self.storage_key_provider,
         )?;
 
-        let domain_runtime_upgraded_proof = DomainRuntimeUpgradedProof::generate(
+        let domain_runtime_single_upgrade_proof = DomainRuntimeSingleUpgradeProof::generate(
             &self.storage_key_provider,
             self.consensus_client.as_ref(),
             consensus_block_hash,
@@ -418,7 +417,7 @@ where
             proof: FraudProofVariant::InvalidExtrinsicsRoot(InvalidExtrinsicsRootProof {
                 valid_bundle_digests,
                 invalid_inherent_extrinsic_proofs,
-                domain_runtime_upgraded_proof,
+                domain_runtime_single_upgrade_proof,
                 domain_chain_allowlist_proof,
                 domain_sudo_call_proof,
             }),
@@ -432,12 +431,26 @@ where
         domain_id: DomainId,
         at: CBlock::Hash,
     ) -> Result<Option<RuntimeId>, FraudProofError> {
-        let header =
-            self.consensus_client
-                .header(at)?
-                .ok_or(sp_blockchain::Error::MissingHeader(format!(
-                    "No header found for {at:?}"
-                )))?;
+        // Generate the runtime upgrades list proof
+        let domain_runtime_upgrades = DomainRuntimeUpgradesProof::generate(
+            self.consensus_client.as_ref(),
+            at,
+            (),
+            &self.storage_key_provider,
+        )?;
+
+        // Extract the list data to find out if this runtime was upgraded
+        let storage_key_req =
+            <DomainRuntimeUpgradesProof as BasicStorageProof<CBlock>>::storage_key_request(());
+        let storage_key = self
+            .storage_key_provider
+            .storage_key(storage_key_req.clone())
+            .expect("just generated proof, so key must exist; qed");
+        let domain_runtime_upgrade_list =
+            StorageProofVerifier::<HashingFor<CBlock>>::get_decoded_value::<
+                <DomainRuntimeUpgradesProof as BasicStorageProof<CBlock>>::StorageValue,
+            >(&at, domain_runtime_upgrades.into(), StorageKey(storage_key))
+            .expect("just generated proof, so it must verify; qed");
 
         let runtime_id = self
             .consensus_client
@@ -447,12 +460,7 @@ where
                 "No RuntimeId found for {domain_id:?}"
             ))))?;
 
-        let is_runtime_upgraded = header
-            .digest()
-            .logs
-            .iter()
-            .filter_map(|log| log.as_domain_runtime_upgrade())
-            .any(|upgraded_runtime_id| upgraded_runtime_id == runtime_id);
+        let is_runtime_upgraded = domain_runtime_upgrade_list.contains(&runtime_id);
 
         Ok(is_runtime_upgraded.then_some(runtime_id))
     }
