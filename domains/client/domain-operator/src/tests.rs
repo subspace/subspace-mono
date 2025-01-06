@@ -1235,14 +1235,17 @@ async fn test_invalid_state_transition_proof_creation_and_verification(
 
     // When the system domain node process the primary block that contains `bad_submit_bundle_tx`,
     // it will generate and submit a fraud proof
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1380,14 +1383,17 @@ async fn test_true_invalid_bundles_inherent_extrinsic_proof_creation_and_verific
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1494,14 +1500,17 @@ async fn test_false_invalid_bundles_inherent_extrinsic_proof_creation_and_verifi
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1637,14 +1646,17 @@ async fn test_true_invalid_bundles_undecodeable_tx_proof_creation_and_verificati
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1751,14 +1763,17 @@ async fn test_false_invalid_bundles_undecodeable_tx_proof_creation_and_verificat
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1907,14 +1922,17 @@ async fn test_true_invalid_bundles_illegal_xdm_proof_creation_and_verification()
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2072,14 +2090,17 @@ async fn test_true_invalid_bundles_illegal_extrinsic_proof_creation_and_verifica
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2206,14 +2227,17 @@ async fn test_false_invalid_bundles_illegal_extrinsic_proof_creation_and_verific
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2327,14 +2351,17 @@ async fn test_true_invalid_bundle_weight_proof_creation_and_verification() {
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2439,14 +2466,17 @@ async fn test_false_invalid_bundle_weight_proof_creation_and_verification() {
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2552,14 +2582,17 @@ async fn test_false_invalid_bundles_non_exist_extrinsic_proof_creation_and_verif
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2635,14 +2668,17 @@ async fn test_invalid_block_fees_proof_creation() {
 
     // When the domain node operator processes the primary block that contains `bad_submit_bundle_tx`,
     // it will generate and submit a fraud proof
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2738,14 +2774,17 @@ async fn test_invalid_transfers_fraud_proof() {
 
     // When the domain node operator processes the primary block that contains `bad_submit_bundle_tx`,
     // it will generate and submit a fraud proof
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2836,14 +2875,17 @@ async fn test_invalid_domain_block_hash_proof_creation() {
 
     // When the domain node operator processes the primary block that contains `bad_submit_bundle_tx`,
     // it will generate and submit a fraud proof
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2934,14 +2976,17 @@ async fn test_invalid_domain_extrinsics_root_proof_creation() {
 
     // When the domain node operator processes the primary block that contains `bad_submit_bundle_tx`,
     // it will generate and submit a fraud proof
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -4772,9 +4817,10 @@ async fn test_bad_receipt_chain() {
     }
 
     // The fraud proof should be submitted
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // The first bad ER should be pruned and its descendants are marked as pending to prune
     ferdie.produce_blocks(1).await.unwrap();
@@ -4885,6 +4931,8 @@ async fn test_bad_receipt_chain() {
     assert_eq!(bob_best_number, bob.client.info().best_number);
 
     produce_blocks!(ferdie, bob, 15).await.unwrap();
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -5493,14 +5541,17 @@ async fn test_xdm_false_invalid_fraud_proof() {
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
 
 // TODO: this test is flaky and sometime hang forever in CI thus disable it temporary,
@@ -5741,12 +5792,15 @@ async fn test_stale_fork_xdm_true_invalid_fraud_proof() {
     .unwrap();
     assert!(ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
 
-    let _ = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
+    let timed_out = tokio::time::timeout(TIMEOUT, wait_for_fraud_proof_fut)
         .await
-        .inspect_err(|_| error!("fraud proof was not created before the timeout"));
+        .inspect_err(|_| error!("fraud proof was not created before the timeout"))
+        .is_err();
 
     // Produce a consensus block that contains the fraud proof, the fraud proof wil be verified
     // and executed, and prune the bad receipt from the block tree
     ferdie.produce_blocks(1).await.unwrap();
     assert!(!ferdie.does_receipt_exist(bad_receipt_hash).unwrap());
+    // We check for timeouts last, because they are the least useful test failure message.
+    assert!(!timed_out);
 }
