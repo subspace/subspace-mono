@@ -285,12 +285,12 @@ where
             .preprocess_consensus_block(consensus_block_hash, (parent_hash, parent_number))?;
 
         let preprocess_took = start.elapsed().as_millis();
-        if preprocess_took >= SLOW_PREPROCESS_MILLIS.into() {
-            tracing::warn!(
-                ?consensus_block_info,
-                "Slow consensus block preprocessing, took {preprocess_took}ms"
-            );
-        }
+        // if preprocess_took >= SLOW_PREPROCESS_MILLIS.into() {
+        tracing::warn!(
+            ?consensus_block_info,
+            "Slow consensus block preprocessing, took {preprocess_took}ms"
+        );
+        // }
 
         let Some(preprocess_result) = maybe_preprocess_result else {
             tracing::debug!(
@@ -339,16 +339,16 @@ where
             .block_weight(domain_block_result.header_hash)?
             .ref_time()
             / WEIGHT_REF_TIME_PER_MILLIS;
-        if block_execution_took
-            >= slow_domain_block_execution_threshold(reference_block_execution_duration_ms).into()
-        {
-            tracing::warn!(
-                ?consensus_block_info,
-                ?built_block_info,
-                ?reference_block_execution_duration_ms,
-                "Slow domain block execution, took {block_execution_took}ms"
-            );
-        }
+        // if block_execution_took
+        //     >= slow_domain_block_execution_threshold(reference_block_execution_duration_ms).into()
+        // {
+        tracing::warn!(
+            ?consensus_block_info,
+            ?built_block_info,
+            ?reference_block_execution_duration_ms,
+            "Slow domain block execution, took {block_execution_took}ms"
+        );
+        // }
 
         self.domain_block_processor
             .on_consensus_block_processed(consensus_block_hash, Some(domain_block_result))?;

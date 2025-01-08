@@ -6,7 +6,7 @@ use domain_runtime_primitives::{Balance, CheckExtrinsicsValidityError};
 use domain_test_service::evm_domain_test_runtime::{
     Runtime as TestRuntime, RuntimeCall, Signature, UncheckedExtrinsic as RuntimeUncheckedExtrinsic,
 };
-use domain_test_service::EcdsaKeyring::{Alice, Charlie};
+use domain_test_service::EcdsaKeyring::{self, Alice, Charlie};
 use domain_test_service::Sr25519Keyring::Ferdie;
 use domain_test_service::{construct_extrinsic_raw_payload, EvmDomainNode};
 use ethereum::TransactionV2 as Transaction;
@@ -15,7 +15,7 @@ use frame_support::pallet_prelude::DispatchClass;
 use pallet_ethereum::Call;
 use pallet_evm::GasWeightMapping;
 use rand::distributions::{Distribution, Uniform};
-use sc_client_api::{HeaderBackend, StorageProof};
+use sc_client_api::{BlockBackend, HeaderBackend, StorageProof};
 use sc_service::{BasePath, Role};
 use sp_api::{ApiExt, ProvideRuntimeApi, TransactionOutcome};
 use sp_core::ecdsa::Pair;
@@ -273,6 +273,290 @@ async fn benchmark_bundle_with_evm_tx(
         .map(|(k, _v)| k.to_vec())
         .collect::<Vec<Vec<u8>>>();
     (recorded_keys, storage_proof)
+}
+
+fn evm_transfer(
+    from_private_key: &H256,
+    to: H160,
+    value: U256,
+    nonce: U256,
+    gas_price: U256,
+) -> RuntimeUncheckedExtrinsic {
+    // let limits: frame_system::limits::BlockWeights =
+    //     <TestRuntime as frame_system::Config>::BlockWeights::get();
+    // // `limits.get(DispatchClass::Normal).max_extrinsic` is too large to use as `gas_limit`
+    // // thus use `base_extrinsic`
+    // let max_extrinsic = limits.get(DispatchClass::Normal).base_extrinsic * 1000;
+    // let max_extrinsic_gas =
+    //     <TestRuntime as pallet_evm::Config>::GasWeightMapping::weight_to_gas(max_extrinsic);
+
+    let tx = LegacyUnsignedTransaction {
+        nonce,
+        gas_price,
+        gas_limit: U256::from(21000),
+        action: ethereum::TransactionAction::Call(to),
+        value,
+        input: vec![],
+    }
+    .sign(&from_private_key);
+
+    generate_evm_domain_extrinsic(tx)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_1000() {
+    evm_n_tranfer_benchmark(1000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_2000() {
+    evm_n_tranfer_benchmark(2000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_3000() {
+    evm_n_tranfer_benchmark(3000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_4000() {
+    evm_n_tranfer_benchmark(4000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_5000() {
+    evm_n_tranfer_benchmark(5000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_6000() {
+    evm_n_tranfer_benchmark(6000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_7000() {
+    evm_n_tranfer_benchmark(7000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_tranfer_benchmark_8000() {
+    evm_n_tranfer_benchmark(8000).await;
+}
+
+async fn evm_n_tranfer_benchmark(tx_count: usize) {
+    let directory = TempDir::new().expect("Must be able to create temporary directory");
+
+    let mut builder = sc_cli::LoggerBuilder::new("");
+    builder.with_colors(false);
+    let _ = builder.init();
+
+    let tokio_handle = tokio::runtime::Handle::current();
+
+    // Start Ferdie
+    let mut ferdie = MockConsensusNode::run(
+        tokio_handle.clone(),
+        Ferdie,
+        BasePath::new(directory.path().join("ferdie")),
+    );
+
+    // Run Alice (a evm domain authority node)
+    let mut alice = domain_test_service::DomainNodeBuilder::new(
+        tokio_handle.clone(),
+        BasePath::new(directory.path().join("alice")),
+    )
+    .build_evm_node(Role::Authority, Alice, &mut ferdie)
+    .await;
+
+    let sender = address_build(123456789u128);
+    let alice_balance = alice.free_balance(Alice.to_account_id());
+    let alice_nonce = alice.account_nonce();
+    let init_transfer = alice.construct_extrinsic(
+        alice_nonce,
+        pallet_balances::Call::transfer_allow_death {
+            dest: sender.address.0.into(),
+            value: alice_balance / 2,
+        },
+    );
+    alice
+        .send_extrinsic(init_transfer)
+        .await
+        .expect("Failed to send extrinsic");
+    let (slot, bundle) = ferdie.produce_slot_and_wait_for_bundle_submission().await;
+    assert_eq!(bundle.extrinsics.len(), 1);
+    produce_block_with!(ferdie.produce_block_with_slot(slot), alice)
+        .await
+        .unwrap();
+
+    let mut sender_nonce = U256::from(0);
+    let gas_price = alice
+        .client
+        .runtime_api()
+        .gas_price(alice.client.info().best_hash)
+        .unwrap();
+    for i in 1..tx_count {
+        let to = address_build(i as u128);
+        let transfer_tx = evm_transfer(
+            &sender.private_key,
+            to.address,
+            U256::from(123456789098765u64),
+            sender_nonce,
+            gas_price,
+        );
+        alice
+            .send_extrinsic(transfer_tx)
+            .await
+            .expect("Failed to send extrinsic");
+        sender_nonce += U256::from(1);
+    }
+    log::info!("{} extrinsic submitted to tx pool", tx_count);
+
+    let mut included_tx = 0;
+    loop {
+        let (slot, bundle) = ferdie.produce_slot_and_wait_for_bundle_submission().await;
+        if bundle.extrinsics.len() == 0 {
+            produce_block_with!(ferdie.produce_block_with_slot(slot), alice)
+                .await
+                .unwrap();
+            let info = alice.client.info();
+            let block_body = alice.client.block_body(info.best_hash).unwrap().unwrap();
+            log::info!(
+                "{} extrinsic include in block#{:?}",
+                block_body.len(),
+                info.best_number
+            );
+            continue;
+        }
+
+        included_tx += bundle.extrinsics.len();
+        if included_tx >= tx_count - 1 {
+            break;
+        }
+    }
+
+    produce_blocks!(ferdie, alice, 1).await.unwrap();
+    let info = alice.client.info();
+    let block_body = alice.client.block_body(info.best_hash).unwrap().unwrap();
+    log::info!(
+        "{} extrinsic include in block#{:?}",
+        block_body.len(),
+        info.best_number
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_1000() {
+    evm_n_substrate_tranfer_benchmark(1000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_2000() {
+    evm_n_substrate_tranfer_benchmark(2000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_3000() {
+    evm_n_substrate_tranfer_benchmark(3000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_4000() {
+    evm_n_substrate_tranfer_benchmark(4000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_5000() {
+    evm_n_substrate_tranfer_benchmark(5000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_6000() {
+    evm_n_substrate_tranfer_benchmark(6000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_7000() {
+    evm_n_substrate_tranfer_benchmark(7000).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn evm_substrate_tranfer_benchmark_8000() {
+    evm_n_substrate_tranfer_benchmark(8000).await;
+}
+
+async fn evm_n_substrate_tranfer_benchmark(tx_count: usize) {
+    let directory = TempDir::new().expect("Must be able to create temporary directory");
+
+    let mut builder = sc_cli::LoggerBuilder::new("");
+    builder.with_colors(false);
+    let _ = builder.init();
+
+    let tokio_handle = tokio::runtime::Handle::current();
+
+    // Start Ferdie
+    let mut ferdie = MockConsensusNode::run(
+        tokio_handle.clone(),
+        Ferdie,
+        BasePath::new(directory.path().join("ferdie")),
+    );
+
+    // Run Alice (a evm domain authority node)
+    let mut alice = domain_test_service::DomainNodeBuilder::new(
+        tokio_handle.clone(),
+        BasePath::new(directory.path().join("alice")),
+    )
+    .build_evm_node(Role::Authority, Alice, &mut ferdie)
+    .await;
+
+    produce_blocks!(ferdie, alice, 3).await.unwrap();
+
+    let mut alice_nonce = alice.account_nonce();
+    for i in 1..tx_count {
+        let transfer = alice.construct_extrinsic(
+            alice_nonce,
+            pallet_balances::Call::transfer_allow_death {
+                dest: EcdsaKeyring::N(i as u32).to_account_id(),
+                value: 123456789098765u64.into(),
+            },
+        );
+        alice
+            .send_extrinsic(transfer)
+            .await
+            .expect("Failed to send extrinsic");
+        alice_nonce += 1;
+    }
+    log::info!("{} extrinsic submitted to tx pool", tx_count);
+
+    let mut included_tx = 0;
+    loop {
+        let (slot, bundle) = ferdie.produce_slot_and_wait_for_bundle_submission().await;
+        if bundle.extrinsics.len() == 0 {
+            produce_block_with!(ferdie.produce_block_with_slot(slot), alice)
+                .await
+                .unwrap();
+            let info = alice.client.info();
+            let block_body = alice.client.block_body(info.best_hash).unwrap().unwrap();
+            log::info!(
+                "{} extrinsic include in block#{:?}",
+                block_body.len(),
+                info.best_number
+            );
+            continue;
+        }
+
+        included_tx += bundle.extrinsics.len();
+        if included_tx >= tx_count - 1 {
+            break;
+        }
+    }
+
+    produce_blocks!(ferdie, alice, 1).await.unwrap();
+    let info = alice.client.info();
+    let block_body = alice.client.block_body(info.best_hash).unwrap().unwrap();
+    log::info!(
+        "{} extrinsic include in block#{:?}",
+        block_body.len(),
+        info.best_number
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

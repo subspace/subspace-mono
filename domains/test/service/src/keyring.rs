@@ -14,6 +14,7 @@ pub enum Keyring {
     Ferdie,
     One,
     Two,
+    N(u32),
 }
 
 impl Keyring {

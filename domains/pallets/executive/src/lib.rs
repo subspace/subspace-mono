@@ -289,6 +289,7 @@ where
     pub fn storage_root() -> Vec<u8> {
         let version = <ExecutiveConfig as frame_system::Config>::Version::get().state_version();
         sp_io::storage::root(version)
+        // [1u8; 32].into()
     }
 
     /// Wrapped `frame_executive::Executive::execute_on_runtime_upgrade`.

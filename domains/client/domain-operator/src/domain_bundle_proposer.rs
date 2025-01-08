@@ -284,24 +284,24 @@ where
                 // This check is done in similar fashion to block builder's build block.
                 // This check needs to be the last check as otherwise if the tx won't be part of bundle due to
                 // some other checks, its side effect will still be part of RuntimeApiImpl's changes buffer.
-                let transaction_validity_result =
-                    runtime_api_instance.execute_in_transaction(|api| {
-                        let transaction_validity_result = api.check_extrinsics_and_do_pre_dispatch(
-                            parent_hash,
-                            vec![pending_tx_data.clone()],
-                            parent_number,
-                            parent_hash,
-                        );
-                        // Only commit, if there are no errors (both ApiError and CheckTxValidityError)
-                        if let Ok(Ok(_)) = transaction_validity_result {
-                            sp_api::TransactionOutcome::Commit(transaction_validity_result)
-                        } else {
-                            sp_api::TransactionOutcome::Rollback(transaction_validity_result)
-                        }
-                    })?;
-                if transaction_validity_result.is_err() {
-                    continue;
-                }
+                // let transaction_validity_result =
+                //     runtime_api_instance.execute_in_transaction(|api| {
+                //         let transaction_validity_result = api.check_extrinsics_and_do_pre_dispatch(
+                //             parent_hash,
+                //             vec![pending_tx_data.clone()],
+                //             parent_number,
+                //             parent_hash,
+                //         );
+                //         // Only commit, if there are no errors (both ApiError and CheckTxValidityError)
+                //         if let Ok(Ok(_)) = transaction_validity_result {
+                //             sp_api::TransactionOutcome::Commit(transaction_validity_result)
+                //         } else {
+                //             sp_api::TransactionOutcome::Rollback(transaction_validity_result)
+                //         }
+                //     })?;
+                // if transaction_validity_result.is_err() {
+                //     continue;
+                // }
 
                 estimated_bundle_weight = next_estimated_bundle_weight;
                 bundle_size = next_bundle_size;

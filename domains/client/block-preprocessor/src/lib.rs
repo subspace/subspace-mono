@@ -394,20 +394,20 @@ where
             // between them.
             // Using `check_extrinsics_and_do_pre_dispatch` instead of `check_transaction_validity`
             // to maintain side-effect in the storage buffer.
-            let is_legal_tx = runtime_api
-                .check_extrinsics_and_do_pre_dispatch(
-                    parent_domain_hash,
-                    vec![extrinsic.clone()],
-                    parent_domain_number,
-                    parent_domain_hash,
-                )?
-                .is_ok();
+            // let is_legal_tx = runtime_api
+            //     .check_extrinsics_and_do_pre_dispatch(
+            //         parent_domain_hash,
+            //         vec![extrinsic.clone()],
+            //         parent_domain_number,
+            //         parent_domain_hash,
+            //     )?
+            //     .is_ok();
 
-            if !is_legal_tx {
-                return Ok(BundleValidity::Invalid(InvalidBundleType::IllegalTx(
-                    index as u32,
-                )));
-            }
+            // if !is_legal_tx {
+            //     return Ok(BundleValidity::Invalid(InvalidBundleType::IllegalTx(
+            //         index as u32,
+            //     )));
+            // }
 
             let tx_weight = runtime_api.extrinsic_weight(parent_domain_hash, &extrinsic)?;
             estimated_bundle_weight = estimated_bundle_weight.saturating_add(tx_weight);
