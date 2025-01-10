@@ -337,6 +337,7 @@ async fn test_processing_empty_consensus_block() {
         block_import: Arc::new(Box::new(alice.client.clone())),
         import_notification_sinks: Default::default(),
         domain_sync_oracle: ferdie.sync_service.clone(),
+        domain_executor: alice.code_executor.clone(),
     };
 
     let domain_genesis_hash = alice.client.info().best_hash;

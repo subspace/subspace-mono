@@ -1,10 +1,10 @@
 use crate::aux_schema::BundleMismatchType;
 use crate::ExecutionReceiptFor;
 use codec::{Decode, Encode};
-use domain_block_builder::{BlockBuilder, RecordProof};
+use domain_block_builder::BlockBuilder;
 use domain_runtime_primitives::opaque::AccountId;
 use domain_runtime_primitives::CheckExtrinsicsValidityError;
-use sc_client_api::{AuxStore, BlockBackend, ProofProvider};
+use sc_client_api::{AuxStore, BlockBackend, ExecutorProvider, ProofProvider};
 use sc_domains::FPStorageKeyProvider;
 use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
@@ -117,6 +117,7 @@ where
         + AuxStore
         + ProvideRuntimeApi<Block>
         + ProofProvider<Block>
+        + ExecutorProvider<Block>
         + 'static,
     Client::Api: sp_block_builder::BlockBuilder<Block>
         + sp_api::ApiExt<Block>
@@ -227,13 +228,13 @@ where
         let max_extrinsic_index = extrinsics.len() - 1;
         let encoded_extrinsics: Vec<_> = extrinsics.iter().map(Encode::encode).collect();
 
-        let block_builder = BlockBuilder::new(
-            &*self.client,
+        let mut block_builder = BlockBuilder::new(
+            self.client.clone(),
             parent_header.hash(),
             *parent_header.number(),
-            RecordProof::No,
             inherent_digests.clone(),
-            &*self.backend,
+            self.backend.clone(),
+            self.code_executor.clone(),
             extrinsics.into(),
             // NOTE: the inherent extrinsic is already contained in the above `extrinsics`, which
             // is getting from the block body, thus it is okay to pass `maybe_inherent_data` as
@@ -281,8 +282,8 @@ where
 
         let delta_changes = storage_changes.map(|storage_changes| {
             (
-                storage_changes.transaction,
-                storage_changes.transaction_storage_root,
+                storage_changes.storage_changes.transaction,
+                storage_changes.storage_changes.transaction_storage_root,
             )
         });
 
