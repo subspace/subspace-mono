@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["EMBEDDED_KZG_SETTINGS_BYTES","NUM_G1_POWERS","NUM_G2_POWERS"],"struct":["Commitment","Kzg","Polynomial","Scalar","Witness"]};

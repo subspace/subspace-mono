@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["new_full"],"mod":["config","network","providers","rpc"],"struct":["DomainParams","NewFull"],"type":["DomainOperator","FullBackend","FullClient","FullPool"]};

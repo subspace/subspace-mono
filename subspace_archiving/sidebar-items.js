@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["archiver","piece_reconstructor","reconstructor"]};

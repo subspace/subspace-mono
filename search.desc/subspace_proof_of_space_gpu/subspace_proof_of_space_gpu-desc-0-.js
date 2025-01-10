@@ -1,0 +1,1 @@
+searchState.loadedDescShard("subspace_proof_of_space_gpu", 0, "Wrapper data structure encapsulating a single CUDA-capable …\nReturns <code>CudaDevice</code> for each available device\nReturns the argument unchanged.\nGenerates and encodes PoSpace on the GPU\nCuda device ID\nCalls <code>U::from(self)</code>.")

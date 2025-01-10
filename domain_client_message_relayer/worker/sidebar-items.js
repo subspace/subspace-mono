@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["gossip_channel_updates","start_relaying_messages"]};

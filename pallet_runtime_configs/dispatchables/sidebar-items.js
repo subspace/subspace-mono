@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["set_enable_balance_transfers","set_enable_domains","set_enable_dynamic_cost_of_storage"]};
