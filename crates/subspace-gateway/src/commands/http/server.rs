@@ -22,7 +22,7 @@ where
 /// Multiple hashes are separated by `+`.
 async fn request_object_mapping(
     endpoint: &str,
-    hashes: &Vec<Blake3Hash>,
+    hashes: &[Blake3Hash],
 ) -> anyhow::Result<ObjectMappingResponse> {
     let client = reqwest::Client::new();
     let hash_list = hashes.iter().map(hex::encode).collect::<Vec<_>>();
