@@ -67,30 +67,6 @@ mod pallet {
         }
     }
 
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub contract_creation_allowed_by: PermissionedActionAllowedBy<T::AccountId>,
-    }
-
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            GenesisConfig {
-                // If the allow listed accounts are not configured, maintain compatibility with
-                // legacy chainspecs, by allowing anyone to create contracts.
-                contract_creation_allowed_by: PermissionedActionAllowedBy::Anyone,
-            }
-        }
-    }
-
-    // In the genesis config, the allow list should be set to the domain sudo for the private EVM
-    // domain.
-    #[pallet::genesis_build]
-    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
-        fn build(&self) {
-            ContractCreationAllowedBy::<T>::put(self.contract_creation_allowed_by.clone());
-        }
-    }
-
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_finalize(_now: BlockNumberFor<T>) {
