@@ -1,5 +1,5 @@
 images:
-  windows_server_2022_x86_64:
+  windowscustomimage:
     platform: "windows"
     arch: "x64"
     owner: "227107093234"

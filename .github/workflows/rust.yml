@@ -53,7 +53,7 @@ jobs:
         os: ${{ fromJson(github.repository_owner == 'autonomys' &&
           '[
             "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64",
-            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows-server-2022-x86-64",
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m6i+m7i-flex/image=windowscustomimage",
             ["self-hosted", "macos-14-arm64"]
           ]' ||
           '["ubuntu-22.04", "macos-14", "windows-2022"]') }}
@@ -97,12 +97,6 @@ jobs:
           curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/nvidia.gpg > /dev/null
         if: runner.os == 'Linux'
 
-      - name: Set up CUDA repository
-        run: |
-          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/nvidia.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64 /" | sudo tee /etc/apt/sources.list.d/cuda.list > /dev/null
-          sudo apt-get update
-        if: runner.os == 'Linux'
-
       - name: Install CUDA Keyring (Latest Version)
         run: |
           curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring.deb
@@ -110,7 +104,7 @@ jobs:
           sudo apt-get update
 
       - name: CUDA toolchain
-        uses: Jimver/cuda-toolkit@9b295696791d75d658d8de64c4a85097ad8abeaf # v0.2.16
+        uses: Jimver/cuda-toolkit@4bd727d5619dc6fa323b1e76c3aa5dca94f5ec6d # v0.2.19
         with:
           cuda: '12.4.1'
           method: network
@@ -186,7 +180,7 @@ jobs:
         os: ${{ fromJson(github.repository_owner == 'autonomys' &&
           '[
             "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64",
-            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows-server-2022-x86-64",
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m6i+m7i-flex/image=windowscustomimage",
             ["self-hosted", "macos-14-arm64"]
           ]' ||
           '["ubuntu-22.04", "macos-14", "windows-2022"]') }}
