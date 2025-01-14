@@ -53,7 +53,7 @@ jobs:
         os: ${{ fromJson(github.repository_owner == 'autonomys' &&
           '[
             "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64",
-            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows22-base-x64",
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows-server-2022-x86-64",
             ["self-hosted", "macos-14-arm64"]
           ]' ||
           '["ubuntu-22.04", "macos-14", "windows-2022"]') }}
@@ -196,7 +196,7 @@ jobs:
         os: ${{ fromJson(github.repository_owner == 'autonomys' &&
           '[
             "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64",
-            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows22-base-x64",
+            "runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=windows-server-2022-x86-64",
             ["self-hosted", "macos-14-arm64"]
           ]' ||
           '["ubuntu-22.04", "macos-14", "windows-2022"]') }}
