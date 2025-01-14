@@ -1,0 +1,6 @@
+images:
+  windows_server_2022_x86_64:
+    platform: "windows"
+    arch: "x64"
+    owner: "227107093234"
+    ami: "ami-0108ce4fb0e0704da"

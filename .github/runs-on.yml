@@ -1,6 +1,0 @@
-images:
-  windows-server-2022-x86-64:
-    platform: "windows"
-    arch: "x64"
-    owner: "227107093234"
-    name: "gh-windows-runner-custom-runs-on"

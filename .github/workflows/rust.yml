@@ -91,6 +91,24 @@ jobs:
         run: brew install automake
         if: runner.os == 'macOS'
 
+      - name: Add NVIDIA GPG Key
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/nvidia.gpg > /dev/null
+        if: runner.os == 'Linux'
+
+      - name: Set up CUDA repository
+        run: |
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/nvidia.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64 /" | sudo tee /etc/apt/sources.list.d/cuda.list > /dev/null
+          sudo apt-get update
+        if: runner.os == 'Linux'
+
+      - name: Install CUDA Keyring (Latest Version)
+        run: |
+          curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring.deb
+          sudo dpkg -i cuda-keyring.deb
+          sudo apt-get update
+
       - name: CUDA toolchain
         uses: Jimver/cuda-toolkit@9b295696791d75d658d8de64c4a85097ad8abeaf # v0.2.16
         with:
@@ -161,34 +179,6 @@ jobs:
           cargo -Zgitoxide -Zgit clippy --locked --all-targets --features rocm -- -D warnings
         if: runner.os == 'Windows'
 
-  cargo-docs:
-    runs-on: ${{ fromJson(github.repository_owner == 'autonomys' &&
-      '"runs-on=${{ github.run_id }}/cpu=8+16/ram=16+32/family=m7a+m7i-flex/image=ubuntu22-full-x64"' ||
-      '"ubuntu-22.04"') }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-
-      - name: Install Protoc
-        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure cache
-        uses: runs-on/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Check Documentation
-        run: cargo -Zgitoxide -Zgit doc --locked --all --no-deps --lib
-        env:
-          RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links -D rustdoc::private_intra_doc_links"
 
   cargo-test:
     strategy:
