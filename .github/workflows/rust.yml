@@ -102,6 +102,7 @@ jobs:
           curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring.deb
           sudo dpkg -i cuda-keyring.deb
           sudo apt-get update
+        if: runner.os == 'Linux'
 
       - name: CUDA toolchain
         uses: Jimver/cuda-toolkit@4bd727d5619dc6fa323b1e76c3aa5dca94f5ec6d # v0.2.19
