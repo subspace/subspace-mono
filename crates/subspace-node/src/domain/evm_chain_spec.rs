@@ -20,8 +20,8 @@ use crate::chain_spec_utils::{chain_spec_properties, get_public_key_from_seed};
 use crate::domain::cli::{GenesisDomain, GenesisOperatorParams, SpecId};
 use domain_runtime_primitives::{AccountId20Converter, MultiAccountId};
 use evm_domain_runtime::{
-    AccountId, BalancesConfig, EVMChainIdConfig, EVMConfig, Precompiles, RuntimeGenesisConfig,
-    SystemConfig, WASM_BINARY,
+    AccountId, BalancesConfig, EVMChainIdConfig, EVMConfig, EVMNoncetrackerConfig, Precompiles,
+    RuntimeGenesisConfig, SystemConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use parity_scale_codec::Encode;
@@ -29,7 +29,7 @@ use sc_chain_spec::GenericChainSpec;
 use sc_service::ChainType;
 use sp_core::crypto::UncheckedFrom;
 use sp_domains::storage::RawGenesis;
-use sp_domains::{OperatorAllowList, OperatorPublicKey, RuntimeType};
+use sp_domains::{OperatorAllowList, OperatorPublicKey, PermissionedActionAllowedBy, RuntimeType};
 use sp_runtime::traits::Convert;
 use sp_runtime::BuildStorage;
 use std::collections::BTreeSet;
@@ -164,6 +164,11 @@ fn testnet_genesis() -> RuntimeGenesisConfig {
                 })
                 .collect(),
             ..Default::default()
+        },
+        evm_noncetracker: EVMNoncetrackerConfig {
+            // Allow anyone to create contracts on the public EVM domain.
+            // (For the private EVM domain, use the domain sudo account here.)
+            contract_creation_allowed_by: PermissionedActionAllowedBy::Anyone,
         },
         ..Default::default()
     }

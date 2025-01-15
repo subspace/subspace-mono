@@ -41,9 +41,9 @@ use frame_support::weights::{ConstantMultiplier, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::limits::{BlockLength, BlockWeights};
 use pallet_block_fees::fees::OnChargeDomainTransaction;
-use pallet_ethereum::Call::transact;
 use pallet_ethereum::{
-    Call, PostLogContent, Transaction as EthereumTransaction, TransactionData, TransactionStatus,
+    PostLogContent, Transaction as EthereumTransaction, TransactionAction, TransactionData,
+    TransactionStatus,
 };
 use pallet_evm::{
     Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
@@ -69,6 +69,7 @@ use sp_runtime::traits::{
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
+    ValidTransaction,
 };
 use sp_runtime::{
     generic, impl_opaque_keys, ApplyExtrinsicResult, ConsensusEngineId, Digest,
@@ -121,6 +122,7 @@ pub type SignedExtra = (
     frame_system::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    CheckContractCreation,
 );
 
 /// Custom signed extra for check_and_pre_dispatch.
@@ -134,6 +136,7 @@ type CustomSignedExtra = (
     pallet_evm_nonce_tracker::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    CheckContractCreation,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -151,6 +154,95 @@ pub type Executive = domain_pallet_executive::Executive<
     Runtime,
     AllPalletsWithSystem,
 >;
+
+/// Rejects contracts that can't be created under the current allow list.
+/// Returns false if the call is a contract call, and the account is *not* allowed to call it.
+/// Otherwise, returns true.
+pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> bool {
+    if is_create_contract(call)
+        && !pallet_evm_nonce_tracker::Pallet::<Runtime>::is_allowed_to_create_contracts(signer)
+    {
+        return false;
+    }
+
+    // If it's not a contract call, or the account is allowed to create contracts, return true.
+    true
+}
+
+/// Returns true if the call is a contract creation call.
+pub fn is_create_contract(call: &RuntimeCall) -> bool {
+    match call {
+        RuntimeCall::EVM(pallet_evm::Call::create { .. })
+        | RuntimeCall::EVM(pallet_evm::Call::create2 { .. }) => true,
+        RuntimeCall::Ethereum(pallet_ethereum::Call::transact {
+            transaction: EthereumTransaction::Legacy(transaction),
+            ..
+        }) => transaction.action == TransactionAction::Create,
+        RuntimeCall::Ethereum(pallet_ethereum::Call::transact {
+            transaction: EthereumTransaction::EIP2930(transaction),
+            ..
+        }) => transaction.action == TransactionAction::Create,
+        RuntimeCall::Ethereum(pallet_ethereum::Call::transact {
+            transaction: EthereumTransaction::EIP1559(transaction),
+            ..
+        }) => transaction.action == TransactionAction::Create,
+        // TODO: does this need a recursion limit?
+        RuntimeCall::Utility(utility_call) => match utility_call {
+            pallet_utility::Call::batch { calls }
+            | pallet_utility::Call::batch_all { calls }
+            | pallet_utility::Call::force_batch { calls } => calls.iter().any(is_create_contract),
+            pallet_utility::Call::as_derivative { call, .. }
+            | pallet_utility::Call::dispatch_as { call, .. }
+            | pallet_utility::Call::with_weight { call, .. } => is_create_contract(call),
+            pallet_utility::Call::__Ignore(..) => false,
+        },
+        _ => false,
+    }
+}
+
+/// Reject contract creation, unless the account is in the current evm contract allow list.
+#[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
+pub struct CheckContractCreation;
+
+impl SignedExtension for CheckContractCreation {
+    const IDENTIFIER: &'static str = "CheckContractCreation";
+    type AccountId = <Runtime as frame_system::Config>::AccountId;
+    type Call = <Runtime as frame_system::Config>::RuntimeCall;
+    type AdditionalSigned = ();
+    type Pre = ();
+
+    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+        Ok(())
+    }
+
+    fn validate(
+        &self,
+        who: &Self::AccountId,
+        call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> TransactionValidity {
+        // Reject contract creation unless the account is in the allow list.
+        if !is_create_contract_allowed(call, who) {
+            InvalidTransaction::Call.into()
+        } else {
+            Ok(ValidTransaction::default())
+        }
+    }
+
+    fn pre_dispatch(
+        self,
+        who: &Self::AccountId,
+        call: &Self::Call,
+        info: &DispatchInfoOf<Self::Call>,
+        len: usize,
+    ) -> Result<Self::Pre, TransactionValidityError> {
+        self.validate(who, call, info, len)?;
+        Ok(())
+    }
+
+    // TODO: can unsigned calls create contracts?
+}
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
     type SignedInfo = H160;
@@ -175,6 +267,11 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         dispatch_info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Option<TransactionValidity> {
+        if !is_create_contract_allowed(self, &(*info).into()) {
+            // TODO: should this be Custom() instead?
+            return Some(Err(InvalidTransaction::Call.into()));
+        }
+
         match self {
             RuntimeCall::Ethereum(call) => {
                 // Ensure the caller can pay for the consensus chain storage fee
@@ -199,6 +296,11 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         dispatch_info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Option<Result<(), TransactionValidityError>> {
+        if !is_create_contract_allowed(self, &(*info).into()) {
+            // TODO: should this be Custom() instead?
+            return Some(Err(InvalidTransaction::Call.into()));
+        }
+
         match self {
             RuntimeCall::Ethereum(call) => {
                 // Withdraw the consensus chain storage fee from the caller and record
@@ -946,7 +1048,7 @@ fn pre_dispatch_evm_transaction(
             {
                 let _ = transaction_validity?;
 
-                let Call::transact { transaction } = call;
+                let pallet_ethereum::Call::transact { transaction } = call;
                 domain_check_weight::CheckWeight::<Runtime>::do_pre_dispatch(dispatch_info, len)?;
 
                 let transaction_data: TransactionData = (&transaction).into();
@@ -1009,6 +1111,7 @@ fn check_transaction_and_do_pre_dispatch_inner(
                 pallet_evm_nonce_tracker::CheckNonce::from(extra.5 .0),
                 extra.6,
                 extra.7,
+                extra.8,
             );
 
             custom_extra
@@ -1526,7 +1629,7 @@ impl_runtime_apis! {
             xts: Vec<<Block as BlockT>::Extrinsic>,
         ) -> Vec<EthereumTransaction> {
             xts.into_iter().filter_map(|xt| match xt.0.function {
-                RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
+                RuntimeCall::Ethereum(pallet_ethereum::Call::transact {  transaction }) => Some(transaction),
                 _ => None
             }).collect::<Vec<EthereumTransaction>>()
         }
@@ -1560,7 +1663,7 @@ impl_runtime_apis! {
     impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
         fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
             UncheckedExtrinsic::new_unsigned(
-                pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+                pallet_ethereum::Call::transact { transaction }.into(),
             )
         }
     }

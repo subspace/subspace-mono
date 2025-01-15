@@ -7,7 +7,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_std::prelude::*;
 
-/// Disable specific pallets.
+/// Disable balance transfers, if configured in the runtime.
 #[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
 pub struct DisablePallets;
 
