@@ -5,30 +5,33 @@
 //! cache addition and removal, tries to reduce number of reinitializations that result in potential
 //! piece cache sync, etc.
 
-use crate::cluster::cache::{ClusterCacheIdentifyBroadcast, ClusterPieceCache};
+use crate::cluster::cache::{
+    ClusterCacheDetailsRequest, ClusterCacheIdentifyBroadcast, ClusterPieceCache,
+    ClusterPieceCacheDetails,
+};
 use crate::cluster::controller::ClusterControllerCacheIdentifyBroadcast;
 use crate::cluster::nats_client::NatsClient;
-use crate::farm::{PieceCache, PieceCacheId};
+use crate::farm::{CacheId, PieceCache};
 use crate::farmer_cache::FarmerCache;
 use anyhow::anyhow;
 use futures::channel::oneshot;
 use futures::future::FusedFuture;
-use futures::{select, FutureExt, StreamExt};
+use futures::{select, FutureExt, Stream, StreamExt};
 use parking_lot::Mutex;
 use std::future::{ready, Future};
 use std::pin::{pin, Pin};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::MissedTickBehavior;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, warn};
 
 const SCHEDULE_REINITIALIZATION_DELAY: Duration = Duration::from_secs(3);
 
 #[derive(Debug)]
 struct KnownCache {
-    cache_id: PieceCacheId,
+    cache_id: CacheId,
     last_identification: Instant,
-    piece_cache: Arc<ClusterPieceCache>,
+    piece_caches: Vec<Arc<ClusterPieceCache>>,
 }
 
 #[derive(Debug)]
@@ -48,17 +51,26 @@ impl KnownCaches {
     fn get_all(&self) -> Vec<Arc<dyn PieceCache>> {
         self.known_caches
             .iter()
-            .map(|known_cache| Arc::clone(&known_cache.piece_cache) as Arc<_>)
+            .flat_map(|known_cache| {
+                known_cache
+                    .piece_caches
+                    .iter()
+                    .map(|piece_cache| Arc::clone(piece_cache) as Arc<_>)
+            })
             .collect()
     }
 
     /// Return `true` if farmer cache reinitialization is required
-    fn update(
+    async fn update_cache<Fut, S>(
         &mut self,
-        cache_id: PieceCacheId,
-        max_num_elements: u32,
+        cache_id: CacheId,
+        scheduled_reinitialization_for: &mut Option<Instant>,
         nats_client: &NatsClient,
-    ) -> bool {
+        piece_cache_stream: Fut,
+    ) where
+        Fut: Future<Output = Option<S>>,
+        S: Stream<Item = ClusterPieceCacheDetails> + Unpin,
+    {
         if self.known_caches.iter_mut().any(|known_cache| {
             if known_cache.cache_id == cache_id {
                 known_cache.last_identification = Instant::now();
@@ -67,20 +79,37 @@ impl KnownCaches {
                 false
             }
         }) {
-            return false;
+            return;
         }
 
-        let piece_cache = Arc::new(ClusterPieceCache::new(
-            cache_id,
-            max_num_elements,
-            nats_client.clone(),
-        ));
+        let Some(piece_caches_stream) = piece_cache_stream.await else {
+            return;
+        };
+        let piece_caches = piece_caches_stream
+            .map(
+                |ClusterPieceCacheDetails {
+                     piece_cache_id,
+                     max_num_elements,
+                 }| {
+                    debug!(%cache_id, %piece_cache_id, %max_num_elements, "Discovered new piece cache");
+                    Arc::new(ClusterPieceCache::new(
+                        piece_cache_id,
+                        max_num_elements,
+                        nats_client.clone(),
+                    ))
+                },
+            )
+            .collect()
+            .await;
+
+        info!(%cache_id, "New cache discovered, scheduling reinitialization");
+        scheduled_reinitialization_for.replace(Instant::now() + SCHEDULE_REINITIALIZATION_DELAY);
+
         self.known_caches.push(KnownCache {
             cache_id,
             last_identification: Instant::now(),
-            piece_cache,
+            piece_caches,
         });
-        true
     }
 
     fn remove_expired(&mut self) -> impl Iterator<Item = KnownCache> + '_ {
@@ -100,7 +129,6 @@ pub async fn maintain_caches(
     let mut known_caches = KnownCaches::new(identification_broadcast_interval);
 
     let mut scheduled_reinitialization_for = None;
-    // Farm that is being added/removed right now (if any)
     let mut cache_reinitialization =
         (Box::pin(ready(())) as Pin<Box<dyn Future<Output = ()>>>).fuse();
 
@@ -164,24 +192,27 @@ pub async fn maintain_caches(
                     return Err(anyhow!("Cache identify stream ended"));
                 };
 
-                let ClusterCacheIdentifyBroadcast {
+                let ClusterCacheIdentifyBroadcast { cache_id } = identify_message;
+
+                known_caches.update_cache(
                     cache_id,
-                    max_num_elements,
-                } = identify_message;
-                if known_caches.update(cache_id, max_num_elements, nats_client) {
-                    info!(
-                        %cache_id,
-                        "New cache discovered, scheduling reinitialization"
-                    );
-                    scheduled_reinitialization_for.replace(
-                        Instant::now() + SCHEDULE_REINITIALIZATION_DELAY,
-                    );
-                } else {
-                    trace!(
-                        %cache_id,
-                        "Received identification for already known cache"
-                    );
-                }
+                    &mut scheduled_reinitialization_for,
+                    nats_client,
+                    async {
+                        nats_client
+                            .stream_request(
+                                &ClusterCacheDetailsRequest,
+                                Some(&cache_id.to_string()),
+                            )
+                            .await
+                            .inspect_err(|error| warn!(
+                                %error,
+                                %cache_id,
+                                "Failed to request farmer farm details"
+                            ))
+                            .ok()
+                    },
+                ).await
             }
             _ = cache_pruning_interval.tick().fuse() => {
                 let mut reinit = false;
