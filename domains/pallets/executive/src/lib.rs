@@ -182,25 +182,9 @@ mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_number: BlockNumberFor<T>) -> Weight {
-            // Reset the intermediate storage roots from last block.
-            IntermediateRoots::<T>::kill();
             // TODO: Probably needs a different value
             Weight::from_parts(1, 0)
         }
-    }
-
-    /// Intermediate storage roots collected during the block execution.
-    #[pallet::storage]
-    #[pallet::getter(fn intermediate_roots)]
-    pub(super) type IntermediateRoots<T: Config> = StorageValue<_, Vec<[u8; 32]>, ValueQuery>;
-}
-
-impl<T: Config> Pallet<T> {
-    pub(crate) fn push_root(root: Vec<u8>) {
-        IntermediateRoots::<T>::append(
-            TryInto::<[u8; 32]>::try_into(root)
-                .expect("root is a SCALE encoded hash which uses H256; qed"),
-        );
     }
 }
 
@@ -388,16 +372,10 @@ where
                 panic!("{}", err)
             }
         });
-
-        // Note the storage root before finalizing the block so that the block imported during the
-        // syncing process produces the same storage root with the one processed based on
-        // the consensus block.
-        Pallet::<ExecutiveConfig>::push_root(Self::storage_root());
     }
 
     /// Wrapped `frame_executive::Executive::finalize_block`.
     pub fn finalize_block() -> HeaderFor<ExecutiveConfig> {
-        Pallet::<ExecutiveConfig>::push_root(Self::storage_root());
         frame_executive::Executive::<
             ExecutiveConfig,
             BlockOf<ExecutiveConfig>,
@@ -429,8 +407,6 @@ where
     ///
     /// Note the storage root in the beginning.
     pub fn apply_extrinsic(uxt: ExtrinsicOf<ExecutiveConfig>) -> ApplyExtrinsicResult {
-        Pallet::<ExecutiveConfig>::push_root(Self::storage_root());
-
         // apply the extrinsic within another transaction so that changes can be reverted.
         let res = with_storage_layer(|| {
             frame_executive::Executive::<
@@ -455,7 +431,7 @@ where
         //      - Pre and Post dispatch fails. Check the test `test_domain_block_builder_include_ext_with_failed_predispatch`
         //        why this could happen. If it fail due to this, then we revert the inner storage changes
         //        but still include extrinsic so that we can clear inconsistency between block body and trace roots.
-        let res = match res {
+        match res {
             Ok(dispatch_outcome) => Ok(dispatch_outcome),
             Err(err) => {
                 let encoded = uxt.encode();
@@ -509,18 +485,7 @@ where
                 <frame_system::Pallet<ExecutiveConfig>>::note_applied_extrinsic(&r, dispatch_info);
                 Ok(Err(err))
             }
-        };
-
-        // TODO: Critical!!! https://github.com/paritytech/substrate/pull/10922#issuecomment-1068997467
-        log::debug!(
-            target: "domain::runtime::executive",
-            "[apply_extrinsic] after: {:?}",
-            {
-                use codec::Decode;
-                BlockHashOf::<ExecutiveConfig>::decode(&mut Self::storage_root().as_slice()).unwrap()
-            }
-        );
-        res
+        }
     }
 
     // TODO: https://github.com/paritytech/substrate/issues/10711

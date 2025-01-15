@@ -28,9 +28,6 @@ sp_api::decl_runtime_apis! {
             tx_range: &U256,
         ) -> bool;
 
-        /// Returns the intermediate storage roots in an encoded form.
-        fn intermediate_roots() -> Vec<[u8; 32]>;
-
         /// Returns the storage root after initializing the block.
         fn initialize_block_with_post_state_root(header: &Block::Header) -> Vec<u8>;
 

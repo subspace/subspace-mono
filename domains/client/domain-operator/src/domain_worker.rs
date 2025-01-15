@@ -21,7 +21,8 @@ use crate::{NewSlotNotification, OperatorStreams};
 use futures::channel::mpsc;
 use futures::{SinkExt, Stream, StreamExt};
 use sc_client_api::{
-    AuxStore, BlockBackend, BlockImportNotification, BlockchainEvents, Finalizer, ProofProvider,
+    AuxStore, BlockBackend, BlockImportNotification, BlockchainEvents, ExecutorProvider, Finalizer,
+    ProofProvider,
 };
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_api::{ApiExt, ProvideRuntimeApi};
@@ -77,6 +78,7 @@ pub(super) async fn start_worker<
         + ProvideRuntimeApi<Block>
         + ProofProvider<Block>
         + Finalizer<Block, Backend>
+        + ExecutorProvider<Block>
         + 'static,
     Client::Api: DomainCoreApi<Block>
         + MessengerApi<Block, NumberFor<CBlock>, CBlock::Hash>

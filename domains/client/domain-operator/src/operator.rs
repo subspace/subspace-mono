@@ -11,7 +11,8 @@ use futures::channel::mpsc;
 use futures::future::pending;
 use futures::{FutureExt, SinkExt, Stream, StreamExt};
 use sc_client_api::{
-    AuxStore, BlockBackend, BlockImportNotification, BlockchainEvents, Finalizer, ProofProvider,
+    AuxStore, BlockBackend, BlockImportNotification, BlockchainEvents, ExecutorProvider, Finalizer,
+    ProofProvider,
 };
 use sc_consensus::BlockImport;
 use sc_network::NetworkRequest;
@@ -44,7 +45,7 @@ where
     backend: Arc<Backend>,
     fraud_proof_generator: FraudProofGenerator<Block, CBlock, Client, CClient, Backend, E>,
     bundle_processor: BundleProcessor<Block, CBlock, Client, CClient, Backend, E>,
-    domain_block_processor: DomainBlockProcessor<Block, CBlock, Client, CClient, Backend>,
+    domain_block_processor: DomainBlockProcessor<Block, CBlock, Client, CClient, Backend, E>,
     pub keystore: KeystorePtr,
 }
 
@@ -84,6 +85,7 @@ where
         + Finalizer<Block, Backend>
         + BlockImport<Block>
         + BlockchainEvents<Block>
+        + ExecutorProvider<Block>
         + 'static,
     for<'a> &'a Client: BlockImport<Block>,
     Client::Api: DomainCoreApi<Block>
@@ -174,7 +176,7 @@ where
             params.client.clone(),
             params.consensus_client.clone(),
             params.backend.clone(),
-            params.code_executor,
+            params.code_executor.clone(),
         );
 
         let domain_block_processor = DomainBlockProcessor {
@@ -187,6 +189,7 @@ where
             block_import: params.block_import,
             import_notification_sinks: Default::default(),
             domain_sync_oracle: params.domain_sync_oracle.clone(),
+            domain_executor: params.code_executor.clone(),
         };
 
         let receipts_checker = ReceiptsChecker {

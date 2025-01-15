@@ -12,6 +12,7 @@ include = [
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive"] }
+domain-block-builder = { version = "0.1.0", path = "../../domains/client/block-builder", optional = true, default-features = false }
 domain-block-preprocessor = { version = "0.1.0", default-features = false, path = "../../domains/client/block-preprocessor", optional = true }
 domain-runtime-primitives = { version = "0.1.0", default-features = false, path = "../../domains/primitives/runtime" }
 frame-support = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
@@ -41,7 +42,6 @@ trie-db = { version = "0.29.1", default-features = false }
 thiserror = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
-domain-block-builder = { version = "0.1.0", path = "../../domains/client/block-builder" }
 domain-block-preprocessor = { version = "0.1.0", path = "../../domains/client/block-preprocessor" }
 domain-test-service = { version = "0.1.0", path = "../../domains/test/service" }
 ethereum = "0.15.0"
@@ -54,13 +54,11 @@ libsecp256k1 = { version = "0.7.1", features = ["static-context", "hmac"] }
 pallet-balances = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 pallet-ethereum = { git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968", features = ['default'] }
 pallet-evm = { version = "6.0.0-dev", git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968", default-features = false }
-parking_lot = "0.12.2"
 rand = { version = "0.8.5", features = ["min_const_gen"] }
 rlp = "0.5.2"
 sp-core = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 sc-cli = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", default-features = false }
 sc-service = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", default-features = false }
-subspace-test-client = { version = "0.1.0", path = "../../test/subspace-test-client" }
 subspace-test-service = { version = "0.1.0", path = "../../test/subspace-test-service" }
 subspace-runtime-primitives = { version = "0.1.0", path = "../../crates/subspace-runtime-primitives" }
 tempfile = "3.13.0"
@@ -70,6 +68,7 @@ tokio = "1.40.0"
 default = ["std"]
 std = [
     "codec/std",
+    "domain-block-builder",
     "domain-block-preprocessor",
     "domain-runtime-primitives/std",
     "frame-support/std",

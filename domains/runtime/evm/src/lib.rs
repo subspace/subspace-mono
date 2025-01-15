@@ -1169,10 +1169,6 @@ impl_runtime_apis! {
             }
         }
 
-        fn intermediate_roots() -> Vec<[u8; 32]> {
-            ExecutivePallet::intermediate_roots()
-        }
-
         fn initialize_block_with_post_state_root(header: &<Block as BlockT>::Header) -> Vec<u8> {
             Executive::initialize_block(header);
             Executive::storage_root()

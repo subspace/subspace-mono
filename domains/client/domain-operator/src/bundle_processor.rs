@@ -3,7 +3,7 @@ use crate::domain_block_processor::{
 };
 use crate::ExecutionReceiptFor;
 use domain_block_preprocessor::DomainBlockPreprocessor;
-use sc_client_api::{AuxStore, BlockBackend, Finalizer, ProofProvider};
+use sc_client_api::{AuxStore, BlockBackend, ExecutorProvider, Finalizer, ProofProvider};
 use sc_consensus::{BlockImportParams, ForkChoiceStrategy, StateAction};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
@@ -50,7 +50,7 @@ where
     domain_receipts_checker: DomainReceiptsChecker<Block, CBlock, Client, CClient, Backend, E>,
     domain_block_preprocessor:
         DomainBlockPreprocessor<Block, CBlock, Client, CClient, ReceiptValidator<Client>>,
-    domain_block_processor: DomainBlockProcessor<Block, CBlock, Client, CClient, Backend>,
+    domain_block_processor: DomainBlockProcessor<Block, CBlock, Client, CClient, Backend, E>,
 }
 
 impl<Block, CBlock, Client, CClient, Backend, E> Clone
@@ -134,6 +134,7 @@ where
         + AuxStore
         + ProvideRuntimeApi<Block>
         + ProofProvider<Block>
+        + ExecutorProvider<Block>
         + Finalizer<Block, Backend>
         + 'static,
     Client::Api: DomainCoreApi<Block>
@@ -160,7 +161,7 @@ where
         client: Arc<Client>,
         backend: Arc<Backend>,
         domain_receipts_checker: DomainReceiptsChecker<Block, CBlock, Client, CClient, Backend, E>,
-        domain_block_processor: DomainBlockProcessor<Block, CBlock, Client, CClient, Backend>,
+        domain_block_processor: DomainBlockProcessor<Block, CBlock, Client, CClient, Backend, E>,
     ) -> Self {
         let domain_block_preprocessor = DomainBlockPreprocessor::new(
             domain_id,
