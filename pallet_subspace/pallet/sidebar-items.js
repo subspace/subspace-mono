@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AllowAuthoringBy","Call","EnableRewardsAt","Error","Event"],"mod":["dispatchables","storage_types"],"struct":["GenesisConfig","Pallet"],"trait":["Config"],"type":["BlockRandomness","Module"]};

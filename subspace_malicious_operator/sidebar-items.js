@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_malicious_operator_configuration"],"mod":["malicious_domain_instance_starter"],"struct":["Cli","DomainCli"]};

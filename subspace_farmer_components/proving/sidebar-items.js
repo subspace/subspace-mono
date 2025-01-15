@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ProvingError"],"struct":["SolutionCandidates"],"trait":["ProvableSolutions"]};

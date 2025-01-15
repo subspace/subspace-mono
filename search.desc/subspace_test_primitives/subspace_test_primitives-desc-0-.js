@@ -1,0 +1,1 @@
+searchState.loadedDescShard("subspace_test_primitives", 0, "Test primitive crates that expose necessary extensions …\nApi for querying onchain state in the test\nApi to get the free balance of the given account\nReturns the last open channel for a given domain.\nVerify the mmr proof statelessly and extract the state …")

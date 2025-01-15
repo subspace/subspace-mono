@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_consensus_block_finalized","verify_mmr_proof"],"struct":["HostFunctions"]};

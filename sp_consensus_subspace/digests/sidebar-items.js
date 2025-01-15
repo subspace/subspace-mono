@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Error","ErrorDigestType","PreDigest","PreDigestPotInfo"],"fn":["derive_next_solution_range","extract_pre_digest","extract_subspace_digest_items","verify_next_digests"],"struct":["DeriveNextSolutionRangeParams","NextDigestsVerificationParams","SubspaceDigestItems"],"trait":["CompatibleDigestItem"]};

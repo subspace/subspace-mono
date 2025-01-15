@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["maintain_farms"],"type":["FarmIndex"]};

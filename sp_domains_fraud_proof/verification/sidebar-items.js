@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["verify_invalid_block_fees_fraud_proof","verify_invalid_bundles_fraud_proof","verify_invalid_domain_block_hash_fraud_proof","verify_invalid_domain_extrinsics_root_fraud_proof","verify_invalid_state_transition_fraud_proof","verify_invalid_transfers_fraud_proof","verify_valid_bundle_fraud_proof"]};

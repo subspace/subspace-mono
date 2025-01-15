@@ -1,0 +1,1 @@
+searchState.loadedDescShard("sc_subspace_chain_specs", 0, "Consensus chain specifications for Subspace.\nDevnet chain spec")

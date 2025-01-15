@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","ChainAllowlistUpdate","Error","Event","OutboxMessageResult"],"mod":["dispatchables","storage_types","weights"],"struct":["InitiateChannelParams","Pallet","ValidatedRelayMessage"],"trait":["Config","HoldIdentifier"],"type":["Module"]};
