@@ -41,9 +41,9 @@ use frame_support::weights::{ConstantMultiplier, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::limits::{BlockLength, BlockWeights};
 use pallet_block_fees::fees::OnChargeDomainTransaction;
-use pallet_ethereum::Call::transact;
 use pallet_ethereum::{
-    Call, PostLogContent, Transaction as EthereumTransaction, TransactionData, TransactionStatus,
+    PostLogContent, Transaction as EthereumTransaction, TransactionAction, TransactionData,
+    TransactionStatus,
 };
 use pallet_evm::{
     Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
@@ -946,7 +946,7 @@ fn pre_dispatch_evm_transaction(
             {
                 let _ = transaction_validity?;
 
-                let Call::transact { transaction } = call;
+                let pallet_ethereum::Call::transact { transaction } = call;
                 domain_check_weight::CheckWeight::<Runtime>::do_pre_dispatch(dispatch_info, len)?;
 
                 let transaction_data: TransactionData = (&transaction).into();
@@ -1526,7 +1526,7 @@ impl_runtime_apis! {
             xts: Vec<<Block as BlockT>::Extrinsic>,
         ) -> Vec<EthereumTransaction> {
             xts.into_iter().filter_map(|xt| match xt.0.function {
-                RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
+                RuntimeCall::Ethereum(pallet_ethereum::Call::transact {  transaction }) => Some(transaction),
                 _ => None
             }).collect::<Vec<EthereumTransaction>>()
         }
@@ -1560,7 +1560,7 @@ impl_runtime_apis! {
     impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
         fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
             UncheckedExtrinsic::new_unsigned(
-                pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+                pallet_ethereum::Call::transact { transaction }.into(),
             )
         }
     }
