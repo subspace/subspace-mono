@@ -43,6 +43,12 @@ mod pallet {
         StorageMap<_, Identity, T::AccountId, U256, OptionQuery>;
 
     /// Storage to hold EVM contract creation allow list accounts.
+    /// Unlike domain instantiation, no storage value means "anyone can create contracts".
+    ///
+    /// At genesis, this is set via DomainConfigParams, DomainRuntimeInfo::Evm, and
+    /// RawGenesis::set_evm_contract_creation_allowed_by().
+    // When this type name is changed, evm_contract_creation_allowed_by_storage_key() also needs to
+    // be updated.
     #[pallet::storage]
     pub(super) type ContractCreationAllowedBy<T: Config> =
         StorageValue<_, PermissionedActionAllowedBy<T::AccountId>, OptionQuery>;
@@ -54,7 +60,7 @@ mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Update ContractCreationAllowedBy storage by Sudo.
+        /// Replace ContractCreationAllowedBy setting in storage, as a domain sudo call.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as frame_system::Config>::DbWeight::get().reads_writes(0, 1))]
         pub fn set_contract_creation_allowed_by(
@@ -90,8 +96,9 @@ impl<T: Config> Pallet<T> {
 
     /// Returns true if the account is allowed to create contracts.
     pub fn is_allowed_to_create_contracts(signer: &T::AccountId) -> bool {
+        // Unlike domain instantiation, no storage value means "anyone can create contracts".
         ContractCreationAllowedBy::<T>::get()
             .map(|allowed_by| allowed_by.is_allowed(signer))
-            .unwrap_or_default()
+            .unwrap_or(true)
     }
 }

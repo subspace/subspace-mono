@@ -41,7 +41,7 @@ use bundle_producer_election::{BundleProducerElectionParams, ProofOfElectionErro
 use core::num::ParseIntError;
 use core::ops::{Add, Sub};
 use core::str::FromStr;
-use domain_runtime_primitives::MultiAccountId;
+use domain_runtime_primitives::{EthereumAccountId, MultiAccountId};
 use frame_support::storage::storage_prefix;
 use frame_support::{Blake2_128Concat, StorageHasher};
 use hexlit::hex;
@@ -881,7 +881,7 @@ impl<AccountId: Ord> OperatorAllowList<AccountId> {
 }
 
 /// Permissioned actions allowed by either specific accounts or anyone.
-#[derive(TypeInfo, Encode, Decode, Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PermissionedActionAllowedBy<AccountId: Codec + Clone> {
     Accounts(Vec<AccountId>),
     Anyone,
@@ -892,6 +892,98 @@ impl<AccountId: Codec + PartialEq + Clone> PermissionedActionAllowedBy<AccountId
         match self {
             PermissionedActionAllowedBy::Accounts(accounts) => accounts.contains(who),
             PermissionedActionAllowedBy::Anyone => true,
+        }
+    }
+
+    pub fn is_anyone_allowed(&self) -> bool {
+        matches!(self, PermissionedActionAllowedBy::Anyone)
+    }
+}
+
+/// EVM-specific domain runtime config.
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EvmDomainRuntimeConfig {
+    /// Accounts initially allowed to create contracts on an EVM domain.
+    /// The domain owner can update this list using a sudo call.
+    pub initial_contract_creation_allow_list: PermissionedActionAllowedBy<EthereumAccountId>,
+}
+
+impl Default for EvmDomainRuntimeConfig {
+    fn default() -> Self {
+        EvmDomainRuntimeConfig {
+            initial_contract_creation_allow_list: PermissionedActionAllowedBy::Anyone,
+        }
+    }
+}
+
+/// AutoId-specific domain runtime config.
+#[derive(
+    TypeInfo, Debug, Default, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize,
+)]
+pub struct AutoIdDomainRuntimeConfig {
+    // Currently, there is no specific configuration for AutoId.
+}
+
+/// Configrations for specific domain runtime kinds.
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DomainRuntimeConfig {
+    Evm(EvmDomainRuntimeConfig),
+    AutoId(AutoIdDomainRuntimeConfig),
+}
+
+impl Default for DomainRuntimeConfig {
+    fn default() -> Self {
+        Self::default_evm()
+    }
+}
+
+impl From<EvmDomainRuntimeConfig> for DomainRuntimeConfig {
+    fn from(evm_config: EvmDomainRuntimeConfig) -> Self {
+        DomainRuntimeConfig::Evm(evm_config)
+    }
+}
+
+impl From<AutoIdDomainRuntimeConfig> for DomainRuntimeConfig {
+    fn from(auto_id_config: AutoIdDomainRuntimeConfig) -> Self {
+        DomainRuntimeConfig::AutoId(auto_id_config)
+    }
+}
+
+impl DomainRuntimeConfig {
+    pub fn default_evm() -> Self {
+        DomainRuntimeConfig::Evm(EvmDomainRuntimeConfig::default())
+    }
+
+    pub fn default_auto_id() -> Self {
+        DomainRuntimeConfig::AutoId(AutoIdDomainRuntimeConfig::default())
+    }
+
+    pub fn is_evm(&self) -> bool {
+        matches!(self, DomainRuntimeConfig::Evm(_))
+    }
+
+    pub fn is_auto_id(&self) -> bool {
+        matches!(self, DomainRuntimeConfig::AutoId(_))
+    }
+
+    pub fn evm(&self) -> Option<&EvmDomainRuntimeConfig> {
+        match self {
+            DomainRuntimeConfig::Evm(evm_config) => Some(evm_config),
+            _ => None,
+        }
+    }
+
+    pub fn initial_contract_creation_allow_list(
+        &self,
+    ) -> Option<&PermissionedActionAllowedBy<EthereumAccountId>> {
+        self.evm()
+            .map(|evm_config| &evm_config.initial_contract_creation_allow_list)
+    }
+
+    pub fn auto_id(&self) -> Option<&AutoIdDomainRuntimeConfig> {
+        match self {
+            DomainRuntimeConfig::AutoId(auto_id_config) => Some(auto_id_config),
+            _ => None,
         }
     }
 }
@@ -909,6 +1001,8 @@ pub struct GenesisDomain<AccountId: Ord, Balance> {
     pub domain_name: String,
     pub bundle_slot_probability: (u64, u64),
     pub operator_allow_list: OperatorAllowList<AccountId>,
+    /// Configurations for a specific type of domain runtime, for example, EVM.
+    pub domain_runtime_config: DomainRuntimeConfig,
 
     // Genesis operator
     pub signing_key: OperatorPublicKey,
@@ -921,7 +1015,7 @@ pub struct GenesisDomain<AccountId: Ord, Balance> {
 
 /// Types of runtime pallet domains currently supports
 #[derive(
-    Debug, Default, Encode, Decode, TypeInfo, Clone, PartialEq, Eq, Serialize, Deserialize,
+    Debug, Default, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, Serialize, Deserialize,
 )]
 pub enum RuntimeType {
     #[default]

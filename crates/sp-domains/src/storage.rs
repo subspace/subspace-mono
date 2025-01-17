@@ -66,7 +66,7 @@ impl RawGenesis {
 
     pub fn set_evm_contract_creation_allowed_by(
         &mut self,
-        contract_creation_allowed_by: PermissionedActionAllowedBy<EthereumAccountId>,
+        contract_creation_allowed_by: &PermissionedActionAllowedBy<EthereumAccountId>,
     ) {
         let _ = self.top.insert(
             evm_contract_creation_allowed_by_storage_key(),

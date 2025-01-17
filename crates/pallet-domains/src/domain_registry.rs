@@ -26,8 +26,8 @@ use scale_info::TypeInfo;
 use sp_core::Get;
 use sp_domains::{
     calculate_max_bundle_weight_and_size, derive_domain_block_hash, DomainBundleLimit, DomainId,
-    DomainSudoCall, DomainsDigestItem, DomainsTransfersTracker, OnDomainInstantiated,
-    OperatorAllowList, RuntimeId, RuntimeType,
+    DomainRuntimeConfig, DomainSudoCall, DomainsDigestItem, DomainsTransfersTracker,
+    OnDomainInstantiated, OperatorAllowList, RuntimeId, RuntimeType,
 };
 use sp_runtime::traits::{CheckedAdd, Zero};
 use sp_runtime::DigestItem;
@@ -56,6 +56,7 @@ pub enum Error {
     DuplicateInitialAccounts,
     FailedToGenerateRawGenesis(crate::runtime_registry::Error),
     BundleLimitCalculationOverflow,
+    InvalidConfigForRuntimeType,
 }
 
 #[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq)]
@@ -71,10 +72,12 @@ pub struct DomainConfig<AccountId: Ord, Balance> {
     /// The probability of successful bundle in a slot (active slots coefficient). This defines the
     /// expected bundle production rate, must be `> 0` and `≤ 1`.
     pub bundle_slot_probability: (u64, u64),
-    /// Allowed operators to operate for this domain.
+    /// Accounts allowed to operate on this domain.
     pub operator_allow_list: OperatorAllowList<AccountId>,
-    // Initial balances for Domain.
+    // Initial balances for this domain.
     pub initial_balances: Vec<(MultiAccountId, Balance)>,
+    /// Configurations for a specific type of domain runtime, for example, EVM.
+    pub domain_runtime_config: DomainRuntimeConfig,
 }
 
 /// Parameters of the `instantiate_domain` call, it is similar to `DomainConfig` except the `max_bundle_size/weight`
@@ -90,6 +93,7 @@ pub struct DomainConfigParams<AccountId: Ord, Balance> {
     pub bundle_slot_probability: (u64, u64),
     pub operator_allow_list: OperatorAllowList<AccountId>,
     pub initial_balances: Vec<(MultiAccountId, Balance)>,
+    pub domain_runtime_config: DomainRuntimeConfig,
 }
 
 pub fn into_domain_config<T: Config>(
@@ -102,6 +106,7 @@ pub fn into_domain_config<T: Config>(
         bundle_slot_probability,
         operator_allow_list,
         initial_balances,
+        domain_runtime_config,
     } = domain_config_params;
 
     let DomainBundleLimit {
@@ -126,6 +131,7 @@ pub fn into_domain_config<T: Config>(
         bundle_slot_probability,
         operator_allow_list,
         initial_balances,
+        domain_runtime_config,
     })
 }
 
@@ -251,16 +257,26 @@ pub(crate) fn do_instantiate_domain<T: Config>(
         runtime_object
     });
 
-    let domain_runtime_info = match runtime_obj.runtime_type {
-        RuntimeType::Evm => {
+    let domain_runtime_info = match (
+        runtime_obj.runtime_type,
+        &domain_config.domain_runtime_config,
+    ) {
+        (RuntimeType::Evm, DomainRuntimeConfig::Evm(domain_runtime_config)) => {
             let evm_chain_id = NextEVMChainId::<T>::get();
             let next_evm_chain_id = evm_chain_id.checked_add(1).ok_or(Error::MaxEVMChainId)?;
             NextEVMChainId::<T>::set(next_evm_chain_id);
-            DomainRuntimeInfo::EVM {
+
+            DomainRuntimeInfo::Evm {
                 chain_id: evm_chain_id,
+                domain_runtime_config: domain_runtime_config.clone(),
             }
         }
-        RuntimeType::AutoId => DomainRuntimeInfo::AutoId,
+        (RuntimeType::AutoId, DomainRuntimeConfig::AutoId(domain_runtime_config)) => {
+            DomainRuntimeInfo::AutoId {
+                domain_runtime_config: domain_runtime_config.clone(),
+            }
+        }
+        _ => return Err(Error::InvalidConfigForRuntimeType),
     };
 
     // burn total issuance on domain from owners account and track the domain balance
@@ -285,7 +301,7 @@ pub(crate) fn do_instantiate_domain<T: Config>(
         let raw_genesis = into_complete_raw_genesis::<T>(
             runtime_obj,
             domain_id,
-            domain_runtime_info,
+            &domain_runtime_info,
             total_issuance,
             domain_config.initial_balances.clone(),
         )
@@ -398,6 +414,7 @@ mod tests {
             bundle_slot_probability: (0, 0),
             operator_allow_list: OperatorAllowList::Anyone,
             initial_balances: Default::default(),
+            domain_runtime_config: Default::default(),
         };
 
         let mut ext = new_test_ext();
@@ -555,6 +572,7 @@ mod tests {
             bundle_slot_probability: (1, 1),
             operator_allow_list: OperatorAllowList::Anyone,
             initial_balances: vec![(MultiAccountId::Raw(vec![0, 1, 2, 3, 4, 5]), 1_000_000 * SSC)],
+            domain_runtime_config: Default::default(),
         };
 
         let mut ext = new_test_ext();

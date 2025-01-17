@@ -1454,6 +1454,7 @@ pub(crate) mod tests {
                 bundle_slot_probability: (0, 0),
                 operator_allow_list: OperatorAllowList::Anyone,
                 initial_balances: Default::default(),
+                domain_runtime_config: Default::default(),
             };
 
             let domain_obj = DomainObject {
@@ -1817,6 +1818,7 @@ pub(crate) mod tests {
                 bundle_slot_probability: (0, 0),
                 operator_allow_list: OperatorAllowList::Anyone,
                 initial_balances: Default::default(),
+                domain_runtime_config: Default::default(),
             };
 
             let domain_obj = DomainObject {
