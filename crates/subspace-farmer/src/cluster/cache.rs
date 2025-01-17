@@ -32,7 +32,7 @@ const MIN_CACHE_IDENTIFICATION_INTERVAL: Duration = Duration::from_secs(1);
 pub struct ClusterCacheDetailsRequest;
 
 impl GenericStreamRequest for ClusterCacheDetailsRequest {
-    /// `*` here stands for cache group
+    /// `*` here stands for cache ID
     const SUBJECT: &'static str = "subspace.cache.*.details";
     type Response = ClusterPieceCacheDetails;
 }
@@ -67,6 +67,7 @@ struct ClusterCacheWritePieceRequest {
 }
 
 impl GenericRequest for ClusterCacheWritePieceRequest {
+    /// `*` here stands for cache ID
     const SUBJECT: &'static str = "subspace.cache.*.write-piece";
     type Response = Result<(), String>;
 }
@@ -78,6 +79,7 @@ struct ClusterCacheReadPieceIndexRequest {
 }
 
 impl GenericRequest for ClusterCacheReadPieceIndexRequest {
+    /// `*` here stands for cache ID
     const SUBJECT: &'static str = "subspace.cache.*.read-piece-index";
     type Response = Result<Option<PieceIndex>, String>;
 }
@@ -89,6 +91,7 @@ pub(super) struct ClusterCacheReadPieceRequest {
 }
 
 impl GenericRequest for ClusterCacheReadPieceRequest {
+    /// `*` here stands for cache ID
     const SUBJECT: &'static str = "subspace.cache.*.read-piece";
     type Response = Result<Option<(PieceIndex, Piece)>, String>;
 }
@@ -100,6 +103,7 @@ pub(super) struct ClusterCacheReadPiecesRequest {
 }
 
 impl GenericStreamRequest for ClusterCacheReadPiecesRequest {
+    /// `*` here stands for cache ID
     const SUBJECT: &'static str = "subspace.cache.*.read-pieces";
     type Response = Result<(PieceCacheOffset, Option<(PieceIndex, Piece)>), String>;
 }
@@ -109,6 +113,7 @@ impl GenericStreamRequest for ClusterCacheReadPiecesRequest {
 struct ClusterCacheContentsRequest;
 
 impl GenericStreamRequest for ClusterCacheContentsRequest {
+    /// `*` here stands for cache ID
     const SUBJECT: &'static str = "subspace.cache.*.contents";
     type Response = Result<(PieceCacheOffset, Option<PieceIndex>), String>;
 }

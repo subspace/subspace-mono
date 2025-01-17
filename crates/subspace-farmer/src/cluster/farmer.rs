@@ -40,16 +40,17 @@ const MIN_FARMER_IDENTIFICATION_INTERVAL: Duration = Duration::from_secs(1);
 
 type Handler<A> = Bag<HandlerFn<A>, A>;
 
-/// Broadcast with farmer id for identification
+/// Broadcast with cluster farmer id for identification
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct ClusterFarmerIdentifyBroadcast {
-    /// Farmer ID
+    /// Cluster farmer ID
     pub farmer_id: FarmerId,
     /// Farmer fingerprint changes when something about internal farm changes (like allocated space)
     pub fingerprint: Blake3Hash,
 }
 
 impl GenericBroadcast for ClusterFarmerIdentifyBroadcast {
+    /// `*` here stands for cluster farmer ID
     const SUBJECT: &'static str = "subspace.farmer.*.farmer-identify";
 }
 
@@ -58,6 +59,7 @@ impl GenericBroadcast for ClusterFarmerIdentifyBroadcast {
 pub struct ClusterFarmerFarmDetailsRequest;
 
 impl GenericStreamRequest for ClusterFarmerFarmDetailsRequest {
+    /// `*` here stands for cluster farmer ID
     const SUBJECT: &'static str = "subspace.farmer.*.farm.details";
     type Response = ClusterFarmerFarmDetails;
 }
@@ -85,6 +87,7 @@ struct ClusterFarmerSectorUpdateBroadcast {
 }
 
 impl GenericBroadcast for ClusterFarmerSectorUpdateBroadcast {
+    /// `*` here stands for single farm ID
     const SUBJECT: &'static str = "subspace.farmer.*.sector-update";
 }
 
@@ -98,6 +101,7 @@ struct ClusterFarmerFarmingNotificationBroadcast {
 }
 
 impl GenericBroadcast for ClusterFarmerFarmingNotificationBroadcast {
+    /// `*` here stands for single farm ID
     const SUBJECT: &'static str = "subspace.farmer.*.farming-notification";
 }
 
@@ -111,6 +115,7 @@ struct ClusterFarmerSolutionBroadcast {
 }
 
 impl GenericBroadcast for ClusterFarmerSolutionBroadcast {
+    /// `*` here stands for single farm ID
     const SUBJECT: &'static str = "subspace.farmer.*.solution-response";
 }
 
@@ -122,6 +127,7 @@ struct ClusterFarmerReadPieceRequest {
 }
 
 impl GenericRequest for ClusterFarmerReadPieceRequest {
+    /// `*` here stands for single farm ID
     const SUBJECT: &'static str = "subspace.farmer.*.farm.read-piece";
     type Response = Result<Option<Piece>, String>;
 }
@@ -131,6 +137,7 @@ impl GenericRequest for ClusterFarmerReadPieceRequest {
 struct ClusterFarmerPlottedSectorsRequest;
 
 impl GenericStreamRequest for ClusterFarmerPlottedSectorsRequest {
+    /// `*` here stands for single farm ID
     const SUBJECT: &'static str = "subspace.farmer.*.farm.plotted-sectors";
     type Response = Result<PlottedSector, String>;
 }
