@@ -24,7 +24,7 @@ extern crate alloc;
 use alloc::string::String;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-pub use fp_account::AccountId20;
+pub use fp_account::{AccountId20, EthereumSignature as EVMSignature};
 use frame_support::dispatch::DispatchClass;
 use frame_support::weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight};
 use frame_system::limits::{BlockLength, BlockWeights};
@@ -67,6 +67,13 @@ pub const SLOT_DURATION: u64 = 1000;
 
 /// The EVM chain Id type
 pub type EVMChainId = u64;
+
+/// Alias to 512-bit hash when used in the context of a transaction signature on the EVM chain.
+pub type EthereumSignature = EVMSignature;
+
+/// Some way of identifying an account on the EVM chain. We intentionally make it equivalent
+/// to the public key of the EVM transaction signing scheme.
+pub type EthereumAccountId = <<EthereumSignature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 /// Dispatch ratio for domains
 pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(65);

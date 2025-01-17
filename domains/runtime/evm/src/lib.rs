@@ -19,13 +19,13 @@ use core::mem;
 use domain_runtime_primitives::opaque::Header;
 pub use domain_runtime_primitives::{
     block_weights, maximum_block_length, maximum_domain_block_weight, opaque, Balance, BlockNumber,
-    Hash, Nonce, EXISTENTIAL_DEPOSIT,
+    EthereumAccountId as AccountId, EthereumSignature as Signature, Hash, Nonce,
+    EXISTENTIAL_DEPOSIT,
 };
 use domain_runtime_primitives::{
     CheckExtrinsicsValidityError, DecodeExtrinsicError, HoldIdentifier, ERR_BALANCE_OVERFLOW,
     ERR_NONCE_OVERFLOW, SLOT_DURATION,
 };
-use fp_account::EthereumSignature;
 use fp_self_contained::{CheckedSignature, SelfContainedCall};
 use frame_support::dispatch::{DispatchClass, DispatchInfo, GetDispatchInfo};
 use frame_support::genesis_builder_helper::{build_state, get_preset};
@@ -63,9 +63,9 @@ use sp_messenger_host_functions::{get_storage_key, StorageKeyRequest};
 use sp_mmr_primitives::EncodableOpaqueLeaf;
 use sp_runtime::generic::Era;
 use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-    IdentityLookup, Keccak256, NumberFor, One, PostDispatchInfoOf, SignedExtension,
-    UniqueSaturatedInto, ValidateUnsigned, Verify, Zero,
+    BlakeTwo256, Block as BlockT, Checkable, DispatchInfoOf, Dispatchable, IdentityLookup,
+    Keccak256, NumberFor, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto,
+    ValidateUnsigned, Zero,
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
@@ -89,13 +89,6 @@ use subspace_runtime_primitives::{
     BlockNumber as ConsensusBlockNumber, Hash as ConsensusBlockHash, Moment,
     SlowAdjustingFeeUpdate, SHANNON, SSC,
 };
-
-/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
-pub type Signature = EthereumSignature;
-
-/// Some way of identifying an account on the chain. We intentionally make it equivalent
-/// to the public key of our transaction signing scheme.
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 /// The address format for describing accounts.
 pub type Address = AccountId;
