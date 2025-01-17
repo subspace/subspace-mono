@@ -148,12 +148,15 @@ pub type Executive = domain_pallet_executive::Executive<
     AllPalletsWithSystem,
 >;
 
+const MAX_CONTRACT_RECURSION_DEPTH: u16 = 5;
+
 /// Rejects contracts that can't be created under the current allow list.
 /// Returns false if the call is a contract call, and the account is *not* allowed to call it.
 /// Otherwise, returns true.
 pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> bool {
-    if is_create_contract(call)
-        && !pallet_evm_nonce_tracker::Pallet::<Runtime>::is_allowed_to_create_contracts(signer)
+    // Only enter recursive code if this account can't create contracts
+    if !pallet_evm_nonce_tracker::Pallet::<Runtime>::is_allowed_to_create_contracts(signer)
+        && is_create_contract(call, MAX_CONTRACT_RECURSION_DEPTH)
     {
         return false;
     }
@@ -163,7 +166,14 @@ pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> boo
 }
 
 /// Returns true if the call is a contract creation call.
-pub fn is_create_contract(call: &RuntimeCall) -> bool {
+pub fn is_create_contract(call: &RuntimeCall, mut recursion_depth_left: u16) -> bool {
+    if recursion_depth_left == 0 {
+        // If the recursion depth is reached, we assume the call contains a contract.
+        return true;
+    }
+
+    recursion_depth_left -= 1;
+
     match call {
         RuntimeCall::EVM(pallet_evm::Call::create { .. })
         | RuntimeCall::EVM(pallet_evm::Call::create2 { .. }) => true,
@@ -179,14 +189,17 @@ pub fn is_create_contract(call: &RuntimeCall) -> bool {
             transaction: EthereumTransaction::EIP1559(transaction),
             ..
         }) => transaction.action == TransactionAction::Create,
-        // TODO: does this need a recursion limit?
         RuntimeCall::Utility(utility_call) => match utility_call {
             pallet_utility::Call::batch { calls }
             | pallet_utility::Call::batch_all { calls }
-            | pallet_utility::Call::force_batch { calls } => calls.iter().any(is_create_contract),
+            | pallet_utility::Call::force_batch { calls } => calls
+                .iter()
+                .any(|call| is_create_contract(call, recursion_depth_left)),
             pallet_utility::Call::as_derivative { call, .. }
             | pallet_utility::Call::dispatch_as { call, .. }
-            | pallet_utility::Call::with_weight { call, .. } => is_create_contract(call),
+            | pallet_utility::Call::with_weight { call, .. } => {
+                is_create_contract(call, recursion_depth_left)
+            }
             pallet_utility::Call::__Ignore(..) => false,
         },
         _ => false,

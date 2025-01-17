@@ -7,6 +7,8 @@ use sp_runtime::transaction_validity::{
 };
 use sp_std::prelude::*;
 
+const MAX_BALANCE_RECURSION_DEPTH: u16 = 5;
+
 /// Disable balance transfers, if configured in the runtime.
 #[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
 pub struct DisablePallets;
@@ -30,7 +32,9 @@ impl SignedExtension for DisablePallets {
         _len: usize,
     ) -> TransactionValidity {
         // Disable normal balance transfers.
-        if !RuntimeConfigs::enable_balance_transfers() && contains_balance_transfer(call) {
+        if !RuntimeConfigs::enable_balance_transfers()
+            && contains_balance_transfer(call, MAX_BALANCE_RECURSION_DEPTH)
+        {
             InvalidTransaction::Call.into()
         } else {
             Ok(ValidTransaction::default())
@@ -61,7 +65,14 @@ impl SignedExtension for DisablePallets {
     }
 }
 
-fn contains_balance_transfer(call: &RuntimeCall) -> bool {
+fn contains_balance_transfer(call: &RuntimeCall, mut recursion_depth_left: u16) -> bool {
+    if recursion_depth_left == 0 {
+        // If the recursion depth is reached, we assume the call contains a balance transfer.
+        return true;
+    }
+
+    recursion_depth_left -= 1;
+
     match call {
         RuntimeCall::Balances(
             pallet_balances::Call::transfer_allow_death { .. }
@@ -71,12 +82,14 @@ fn contains_balance_transfer(call: &RuntimeCall) -> bool {
         RuntimeCall::Utility(utility_call) => match utility_call {
             pallet_utility::Call::batch { calls }
             | pallet_utility::Call::batch_all { calls }
-            | pallet_utility::Call::force_batch { calls } => {
-                calls.iter().any(contains_balance_transfer)
-            }
+            | pallet_utility::Call::force_batch { calls } => calls
+                .iter()
+                .any(|call| contains_balance_transfer(call, recursion_depth_left)),
             pallet_utility::Call::as_derivative { call, .. }
             | pallet_utility::Call::dispatch_as { call, .. }
-            | pallet_utility::Call::with_weight { call, .. } => contains_balance_transfer(call),
+            | pallet_utility::Call::with_weight { call, .. } => {
+                contains_balance_transfer(call, recursion_depth_left)
+            }
             pallet_utility::Call::__Ignore(..) => false,
         },
         _ => false,
