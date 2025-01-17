@@ -1000,9 +1000,28 @@ pub(crate) fn evm_chain_id_storage_key() -> StorageKey {
     )
 }
 
-/// Total issuance storage for Domains.
+/// EVM contract creation allow list storage key.
 ///
-/// This function should ideally use Host function to fetch the storage key
+/// This function should ideally use a Host function to fetch the storage key
+/// from the domain runtime. But since the Host function is not available at Genesis, we have to
+/// assume the storage keys.
+/// TODO: once the chain is launched in mainnet, we should use the Host function for all domain instances.
+pub(crate) fn evm_contract_creation_allowed_by_storage_key() -> StorageKey {
+    StorageKey(
+        storage_prefix(
+            // This is the name used for `pallet_evm_nonce_tracker` in the `construct_runtime` macro
+            // i.e. `EVMNoncetracker: pallet_evm_nonce_tracker = 84,`
+            "EVMNoncetracker".as_bytes(),
+            // This is the storage item name used inside `pallet_evm_nonce_tracker`
+            "ContractCreationAllowedBy".as_bytes(),
+        )
+        .to_vec(),
+    )
+}
+
+/// Total issuance storage key for Domains.
+///
+/// This function should ideally use a Host function to fetch the storage key
 /// from the domain runtime. But since the Host function is not available at Genesis, we have to
 /// assume the storage keys.
 /// TODO: once the chain is launched in mainnet, we should use the Host function for all domain instances.
