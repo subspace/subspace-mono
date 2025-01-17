@@ -89,10 +89,17 @@ pub fn maximum_domain_block_weight() -> Weight {
     weight.set_proof_size(consensus_maximum_normal_block_length)
 }
 
+// When updating these error codes, check for clashes between:
+// <https://github.com/autonomys/subspace/blob/main/crates/sp-domains-fraud-proof/src/lib.rs#L49-L64>
+// <https://github.com/autonomys/subspace/blob/main/domains/pallets/messenger/src/lib.rs#L49-L53>
+
 /// Custom error when nonce overflow occurs.
 pub const ERR_NONCE_OVERFLOW: u8 = 100;
 /// Custom error when balance overflow occurs.
 pub const ERR_BALANCE_OVERFLOW: u8 = 200;
+/// Custom error when a user tries to create a contract, but their account is not on the allow
+/// list.
+pub const ERR_CONTRACT_CREATION_NOT_ALLOWED: u8 = 210;
 
 /// Maximum block length for all dispatches.
 /// This is set to 3.75 MiB since consensus chain supports on 3.75 MiB for normal

@@ -24,7 +24,7 @@ pub use domain_runtime_primitives::{
 };
 use domain_runtime_primitives::{
     CheckExtrinsicsValidityError, DecodeExtrinsicError, HoldIdentifier, ERR_BALANCE_OVERFLOW,
-    ERR_NONCE_OVERFLOW, SLOT_DURATION,
+    ERR_CONTRACT_CREATION_NOT_ALLOWED, ERR_NONCE_OVERFLOW, SLOT_DURATION,
 };
 use fp_self_contained::{CheckedSignature, SelfContainedCall};
 use frame_support::dispatch::{DispatchClass, DispatchInfo, GetDispatchInfo};
@@ -210,6 +210,9 @@ pub fn is_create_contract(call: &RuntimeCall, mut recursion_depth_left: u16) -> 
 #[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
 pub struct CheckContractCreation;
 
+// Unsigned calls can't create contracts. Only pallet-evm and pallet-ethereum can create contracts.
+// For pallet-evm all contracts are signed extrinsics, for pallet-ethereum there is only one
+// extrinsic that is self-contained.
 impl SignedExtension for CheckContractCreation {
     const IDENTIFIER: &'static str = "CheckContractCreation";
     type AccountId = <Runtime as frame_system::Config>::AccountId;
@@ -230,7 +233,7 @@ impl SignedExtension for CheckContractCreation {
     ) -> TransactionValidity {
         // Reject contract creation unless the account is in the allow list.
         if !is_create_contract_allowed(call, who) {
-            InvalidTransaction::Call.into()
+            InvalidTransaction::Custom(ERR_CONTRACT_CREATION_NOT_ALLOWED).into()
         } else {
             Ok(ValidTransaction::default())
         }
@@ -246,8 +249,6 @@ impl SignedExtension for CheckContractCreation {
         self.validate(who, call, info, len)?;
         Ok(())
     }
-
-    // TODO: can unsigned calls create contracts?
 }
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -274,8 +275,10 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         len: usize,
     ) -> Option<TransactionValidity> {
         if !is_create_contract_allowed(self, &(*info).into()) {
-            // TODO: should this be Custom() instead?
-            return Some(Err(InvalidTransaction::Call.into()));
+            return Some(Err(InvalidTransaction::Custom(
+                ERR_CONTRACT_CREATION_NOT_ALLOWED,
+            )
+            .into()));
         }
 
         match self {
@@ -303,8 +306,10 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         len: usize,
     ) -> Option<Result<(), TransactionValidityError>> {
         if !is_create_contract_allowed(self, &(*info).into()) {
-            // TODO: should this be Custom() instead?
-            return Some(Err(InvalidTransaction::Call.into()));
+            return Some(Err(InvalidTransaction::Custom(
+                ERR_CONTRACT_CREATION_NOT_ALLOWED,
+            )
+            .into()));
         }
 
         match self {

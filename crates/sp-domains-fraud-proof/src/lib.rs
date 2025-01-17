@@ -63,6 +63,9 @@ use subspace_core_primitives::U256;
 use subspace_runtime_primitives::{Balance, Moment};
 
 /// Custom invalid validity code for the extrinsics in pallet-domains.
+// When updating these error codes, check for clashes between:
+// <https://github.com/autonomys/subspace/blob/main/domains/primitives/runtime/src/lib.rs#L85-L88>
+// <https://github.com/autonomys/subspace/blob/main/domains/pallets/messenger/src/lib.rs#L49-L53>
 #[repr(u8)]
 pub enum InvalidTransactionCode {
     TransactionProof = 101,

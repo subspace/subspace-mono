@@ -47,9 +47,13 @@ use sp_runtime::traits::{Extrinsic, Hash};
 use sp_runtime::DispatchError;
 
 pub(crate) mod verification_errors {
-    pub(crate) const INVALID_CHANNEL: u8 = 200;
+    // When updating these error codes, check for clashes between:
+    // <https://github.com/autonomys/subspace/blob/main/domains/primitives/runtime/src/lib.rs#L85-L88>
+    // <https://github.com/autonomys/subspace/blob/main/crates/sp-domains-fraud-proof/src/lib.rs#L49-L64>
     pub(crate) const INVALID_NONCE: u8 = 201;
     pub(crate) const NONCE_OVERFLOW: u8 = 202;
+    // This error code was previously 200, but that clashed with ERR_BALANCE_OVERFLOW.
+    pub(crate) const INVALID_CHANNEL: u8 = 203;
 }
 
 #[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, TypeInfo, Copy)]
