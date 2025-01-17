@@ -323,7 +323,6 @@ where
             result = identify_responder(
                 &nats_client,
                 cache_id,
-                &caches_details,
                 cache_group,
                 identification_broadcast_interval
             ).fuse() => {
@@ -378,16 +377,12 @@ where
 ///
 /// Implementation is using concurrency with multiple tokio tasks, but can be started multiple times
 /// per controller instance in order to parallelize more work across threads if needed.
-async fn identify_responder<C>(
+async fn identify_responder(
     nats_client: &NatsClient,
     cache_id: CacheId,
-    caches_details: &[CacheDetails<'_, C>],
     cache_group: &str,
     identification_broadcast_interval: Duration,
-) -> anyhow::Result<()>
-where
-    C: PieceCache,
-{
+) -> anyhow::Result<()> {
     let mut subscription = nats_client
         .subscribe_to_broadcasts::<ClusterControllerCacheIdentifyBroadcast>(Some(cache_group), None)
         .await
@@ -418,14 +413,14 @@ where
                 }
 
                 last_identification = Instant::now();
-                send_identify_broadcast(nats_client, cache_id, caches_details, cache_group).await;
+                send_identify_broadcast(nats_client, cache_id, cache_group).await;
                 interval.reset();
             }
             _ = interval.tick().fuse() => {
                 last_identification = Instant::now();
                 trace!("Cache self-identification");
 
-                send_identify_broadcast(nats_client, cache_id, caches_details, cache_group).await;
+                send_identify_broadcast(nats_client, cache_id, cache_group).await;
             }
         }
     }
@@ -433,19 +428,7 @@ where
     Ok(())
 }
 
-async fn send_identify_broadcast<C>(
-    nats_client: &NatsClient,
-    cache_id: CacheId,
-    caches_details: &[CacheDetails<'_, C>],
-    cache_group: &str,
-) where
-    C: PieceCache,
-{
-    if caches_details.is_empty() {
-        warn!("No cache, skip sending cache identify notification");
-        return;
-    }
-
+async fn send_identify_broadcast(nats_client: &NatsClient, cache_id: CacheId, cache_group: &str) {
     if let Err(error) = nats_client
         .broadcast(&ClusterCacheIdentifyBroadcast { cache_id }, cache_group)
         .await

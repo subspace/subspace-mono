@@ -613,11 +613,6 @@ async fn send_identify_broadcast(
     farmer_id_string: &str,
     farms_details: &[FarmDetails],
 ) {
-    if farms_details.is_empty() {
-        warn!("No farm, skip sending farmer identify notification");
-        return;
-    }
-
     if let Err(error) = nats_client
         .broadcast(
             &new_identify_message(farmer_id, farms_details),
