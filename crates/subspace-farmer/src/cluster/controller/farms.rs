@@ -17,7 +17,7 @@ use async_lock::RwLock as AsyncRwLock;
 use futures::channel::oneshot;
 use futures::future::FusedFuture;
 use futures::stream::FuturesUnordered;
-use futures::{select, FutureExt, Stream, StreamExt};
+use futures::{select, FutureExt, StreamExt};
 use parking_lot::Mutex;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::{ready, Future};
@@ -31,6 +31,8 @@ use tokio::task;
 use tokio::time::MissedTickBehavior;
 use tracing::{debug, error, info, warn};
 
+type CollectFarmerFarmsFuture =
+    Pin<Box<dyn Future<Output = anyhow::Result<Vec<ClusterFarmerFarmDetails>>>>>;
 type AddRemoveFuture<'a> =
     Pin<Box<dyn Future<Output = Option<(FarmIndex, oneshot::Receiver<()>, ClusterFarm)>> + 'a>>;
 
@@ -53,87 +55,30 @@ struct KnownFarm {
 }
 
 enum KnownFarmerInsertResult {
-    Inserted,
+    Inserted {
+        farmer_id: FarmerId,
+        fingerprint: Blake3Hash,
+    },
     FingerprintUpdated {
+        farmer_id: FarmerId,
         old_farms: HashMap<FarmId, (FarmIndex, KnownFarm)>,
     },
     NotInserted,
 }
 
-struct KnownFarmInsertResult {
-    farm_index: FarmIndex,
-    farm_id: FarmId,
-    total_sectors_count: u16,
-    expired_receiver: oneshot::Receiver<()>,
-    add: bool,
-    remove: bool,
-}
+impl KnownFarmerInsertResult {
+    fn process(
+        self,
+        farms: Vec<ClusterFarmerFarmDetails>,
+        known_farmers: &mut KnownFarmers,
+    ) -> Vec<KnownFarmInsertResult> {
+        let farm_indices = known_farmers.pick_farmer_index(farms.len());
 
-#[derive(Debug)]
-struct KnownFarmers {
-    identification_broadcast_interval: Duration,
-    known_farmers: Vec<KnownFarmer>,
-}
-
-impl KnownFarmers {
-    fn new(identification_broadcast_interval: Duration) -> Self {
-        Self {
-            identification_broadcast_interval,
-            known_farmers: Vec::new(),
-        }
-    }
-
-    async fn insert_or_update_farmer<Fut, S>(
-        &mut self,
-        farmer_id: FarmerId,
-        fingerprint: Blake3Hash,
-        farms_stream: Fut,
-    ) -> Vec<KnownFarmInsertResult>
-    where
-        Fut: Future<Output = Option<S>>,
-        S: Stream<Item = ClusterFarmerFarmDetails> + Unpin,
-    {
-        let result = self
-            .known_farmers
-            .iter_mut()
-            .find_map(|known_farmer| {
-                let check_farmer_id = known_farmer.farmer_id == farmer_id;
-                let check_fingerprint = known_farmer.fingerprint == fingerprint;
-                match (check_farmer_id, check_fingerprint) {
-                    (true, true) => {
-                        debug!(%farmer_id,"Updating last identification for farmer");
-                        known_farmer.last_identification = Instant::now();
-                        Some(KnownFarmerInsertResult::NotInserted)
-                    }
-                    (true, false) => {
-                        let old_farms = known_farmer
-                            .known_farms
-                            .drain()
-                            .map(|(farm_index, know_farm)| {
-                                (know_farm.farm_id, (farm_index, know_farm))
-                            })
-                            .collect();
-                        known_farmer.fingerprint = fingerprint;
-                        known_farmer.last_identification = Instant::now();
-                        Some(KnownFarmerInsertResult::FingerprintUpdated { old_farms })
-                    }
-                    (false, _) => None,
-                }
-            })
-            .unwrap_or(KnownFarmerInsertResult::Inserted);
-
-        if let KnownFarmerInsertResult::NotInserted = result {
-            return vec![];
-        }
-
-        let Some(farms_stream) = farms_stream.await else {
-            return vec![];
-        };
-        let farms = farms_stream.collect::<Vec<_>>().await;
-        let farm_indices = self.pick_farmer_index(farms.len());
-
-        match result {
-            KnownFarmerInsertResult::Inserted => {
+        match self {
+            KnownFarmerInsertResult::Inserted {
+                farmer_id,
+                fingerprint,
+            } => {
                 let mut known_farmer = KnownFarmer {
                     farmer_id,
                     fingerprint,
@@ -170,10 +115,13 @@ impl KnownFarmers {
                         }
                     })
                     .collect::<Vec<_>>();
-                self.known_farmers.push(known_farmer);
+                known_farmers.known_farmers.push(known_farmer);
                 res
             }
-            KnownFarmerInsertResult::FingerprintUpdated { mut old_farms } => {
+            KnownFarmerInsertResult::FingerprintUpdated {
+                farmer_id,
+                mut old_farms,
+            } => {
                 farm_indices
                     .into_iter()
                     .zip(farms)
@@ -184,36 +132,33 @@ impl KnownFarmers {
                             fingerprint,
                         } = farm_details;
                         if let Some((farm_index, mut known_farm)) = old_farms.remove(&farm_id) {
-                            if known_farm.farm_id == farm_id {
-                                let known_farmer = self
-                                    .get_known_farmer(farmer_id)
-                                    .expect("Farmer should be available");
-                                if known_farm.fingerprint == fingerprint {
-                                    // Do nothing if farm is already known
-                                    known_farmer.known_farms.insert(farm_index, known_farm);
-                                    None
-                                } else {
-                                    // Update fingerprint
-                                    let (expired_sender, expired_receiver) = oneshot::channel();
-                                    known_farm.expired_sender = expired_sender;
-                                    known_farmer.known_farms.insert(farm_index, known_farm);
-                                    Some(KnownFarmInsertResult {
-                                        farm_index,
-                                        farm_id,
-                                        total_sectors_count,
-                                        expired_receiver,
-                                        add: true,
-                                        remove: true,
-                                    })
-                                }
-                            } else {
+                            let known_farmer = known_farmers
+                                .get_known_farmer(farmer_id)
+                                .expect("Farmer should be available");
+                            if known_farm.fingerprint == fingerprint {
+                                // Do nothing if farm is already known
+                                known_farmer.known_farms.insert(farm_index, known_farm);
                                 None
+                            } else {
+                                // Update fingerprint
+                                let (expired_sender, expired_receiver) = oneshot::channel();
+                                known_farm.expired_sender = expired_sender;
+                                known_farmer.known_farms.insert(farm_index, known_farm);
+                                Some(KnownFarmInsertResult {
+                                    farm_index,
+                                    farm_id,
+                                    total_sectors_count,
+                                    expired_receiver,
+                                    add: true,
+                                    remove: true,
+                                })
                             }
                         } else {
                             // Add new farm
                             let (expired_sender, expired_receiver) = oneshot::channel();
 
-                            self.get_known_farmer(farmer_id)
+                            known_farmers
+                                .get_known_farmer(farmer_id)
                                 .expect("Farmer should be available")
                                 .known_farms
                                 .insert(
@@ -240,6 +185,148 @@ impl KnownFarmers {
                 unreachable!("KnownFarmerInsertResult::NotInserted should be handled above")
             }
         }
+    }
+}
+
+struct KnownFarmInsertResult {
+    farm_index: FarmIndex,
+    farm_id: FarmId,
+    total_sectors_count: u16,
+    expired_receiver: oneshot::Receiver<()>,
+    add: bool,
+    remove: bool,
+}
+
+impl KnownFarmInsertResult {
+    fn process<'a>(
+        self,
+        nats_client: &'a NatsClient,
+        farms_to_add_remove: &mut VecDeque<AddRemoveFuture<'a>>,
+        plotted_pieces: Arc<AsyncRwLock<PlottedPieces<FarmIndex>>>,
+    ) {
+        let KnownFarmInsertResult {
+            farm_index,
+            farm_id,
+            total_sectors_count,
+            expired_receiver,
+            add,
+            remove,
+        } = self;
+
+        if remove {
+            remove_farm(
+                farm_id,
+                farm_index,
+                farms_to_add_remove,
+                plotted_pieces.clone(),
+            );
+        }
+
+        if add {
+            farms_to_add_remove.push_back(Box::pin(async move {
+                match initialize_farm(
+                    farm_index,
+                    farm_id,
+                    total_sectors_count,
+                    plotted_pieces.clone(),
+                    nats_client,
+                )
+                .await
+                {
+                    Ok(farm) => {
+                        if remove {
+                            info!(
+                                %farm_index,
+                                %farm_id,
+                                "Farm re-initialized successfully"
+                            );
+                        } else {
+                            info!(
+                                %farm_index,
+                                %farm_id,
+                                "Farm initialized successfully"
+                            );
+                        }
+
+                        Some((farm_index, expired_receiver, farm))
+                    }
+                    Err(error) => {
+                        warn!(
+                            %error,
+                            "Failed to initialize farm {farm_id}"
+                        );
+                        None
+                    }
+                }
+            }));
+        }
+    }
+}
+
+#[derive(Debug)]
+struct KnownFarmers {
+    identification_broadcast_interval: Duration,
+    known_farmers: Vec<KnownFarmer>,
+}
+
+impl KnownFarmers {
+    fn new(identification_broadcast_interval: Duration) -> Self {
+        Self {
+            identification_broadcast_interval,
+            known_farmers: Vec::new(),
+        }
+    }
+
+    async fn insert_or_update_farmer(
+        &mut self,
+        farmer_id: FarmerId,
+        fingerprint: Blake3Hash,
+        nats_client: &NatsClient,
+    ) -> Vec<KnownFarmInsertResult> {
+        let result = self
+            .known_farmers
+            .iter_mut()
+            .find_map(|known_farmer| {
+                let check_farmer_id = known_farmer.farmer_id == farmer_id;
+                let check_fingerprint = known_farmer.fingerprint == fingerprint;
+                match (check_farmer_id, check_fingerprint) {
+                    (true, true) => {
+                        debug!(%farmer_id,"Updating last identification for farmer");
+                        known_farmer.last_identification = Instant::now();
+                        Some(KnownFarmerInsertResult::NotInserted)
+                    }
+                    (true, false) => {
+                        let old_farms = known_farmer
+                            .known_farms
+                            .drain()
+                            .map(|(farm_index, know_farm)| {
+                                (know_farm.farm_id, (farm_index, know_farm))
+                            })
+                            .collect();
+                        known_farmer.fingerprint = fingerprint;
+                        known_farmer.last_identification = Instant::now();
+                        Some(KnownFarmerInsertResult::FingerprintUpdated {
+                            farmer_id,
+                            old_farms,
+                        })
+                    }
+                    (false, _) => None,
+                }
+            })
+            .unwrap_or(KnownFarmerInsertResult::Inserted {
+                farmer_id,
+                fingerprint,
+            });
+
+        if let KnownFarmerInsertResult::NotInserted = result {
+            return vec![];
+        }
+
+        let Ok(farms) = collect_farmer_farms(farmer_id, nats_client).await else {
+            return vec![];
+        };
+
+        result.process(farms, self)
     }
 
     fn get_known_farmer(&mut self, farmer_id: FarmerId) -> Option<&mut KnownFarmer> {
@@ -280,7 +367,7 @@ impl KnownFarmers {
             .flat_map(|known_farmer| known_farmer.known_farms)
     }
 
-    fn remove(&mut self, farm_index: FarmIndex) {
+    fn remove_farm(&mut self, farm_index: FarmIndex) {
         self.known_farmers.iter_mut().for_each(|known_farmer| {
             known_farmer.known_farms.remove(&farm_index);
         });
@@ -294,7 +381,7 @@ pub async fn maintain_farms(
     plotted_pieces: &Arc<AsyncRwLock<PlottedPieces<FarmIndex>>>,
     identification_broadcast_interval: Duration,
 ) -> anyhow::Result<()> {
-    let mut known_farms = KnownFarmers::new(identification_broadcast_interval);
+    let mut known_farmers = KnownFarmers::new(identification_broadcast_interval);
 
     // Futures that need to be processed sequentially in order to add/remove farms, if farm was
     // added, future will resolve with `Some`, `None` if removed
@@ -333,7 +420,7 @@ pub async fn maintain_farms(
 
         select! {
             (farm_index, result) = farms.select_next_some() => {
-                known_farms.remove(farm_index);
+                known_farmers.remove_farm(farm_index);
                 farms_to_add_remove.push_back(Box::pin(async move {
                     let plotted_pieces = Arc::clone(plotted_pieces);
 
@@ -364,34 +451,20 @@ pub async fn maintain_farms(
                 let Some(identify_message) = maybe_identify_message else {
                     return Err(anyhow!("Farmer identify stream ended"));
                 };
-                let farmer_id = identify_message.farmer_id;
+                let ClusterFarmerIdentifyBroadcast {
+                    farmer_id,
+                    fingerprint,
+                } = identify_message;
 
-                process_farmer_identify_message(
-                    identify_message,
-                    nats_client,
-                    &mut known_farms,
-                    &mut farms_to_add_remove,
-                    plotted_pieces,
-                    async {
-                        nats_client
-                            .stream_request(
-                                &ClusterFarmerFarmDetailsRequest,
-                                Some(&farmer_id.to_string()),
-                            )
-                            .await
-                            .inspect_err(|error| {
-                                warn!(
-                                    %error,
-                                    %farmer_id,
-                                    "Failed to request farmer farm details"
-                                )
-                            })
-                            .ok()
-                    },
-                ).await;
+                for farm_insert_result in known_farmers
+                    .insert_or_update_farmer(farmer_id, fingerprint, nats_client)
+                    .await
+                {
+                    farm_insert_result.process(nats_client, &mut farms_to_add_remove, Arc::clone(plotted_pieces));
+                }
             }
             _ = farm_pruning_interval.tick().fuse() => {
-                for (farm_index, removed_farm) in known_farms.remove_expired() {
+                for (farm_index, removed_farm) in known_farmers.remove_expired() {
                     let farm_id = removed_farm.farm_id;
 
                     if removed_farm.expired_sender.send(()).is_ok() {
@@ -446,85 +519,29 @@ pub async fn maintain_farms(
     }
 }
 
-async fn process_farmer_identify_message<'a, Fut, S>(
-    identify_message: ClusterFarmerIdentifyBroadcast,
-    nats_client: &'a NatsClient,
-    known_farms: &mut KnownFarmers,
-    farms_to_add_remove: &mut VecDeque<AddRemoveFuture<'a>>,
-    plotted_pieces: &'a Arc<AsyncRwLock<PlottedPieces<FarmIndex>>>,
-    farms_stream: Fut,
-) where
-    Fut: Future<Output = Option<S>>,
-    S: Stream<Item = ClusterFarmerFarmDetails> + Unpin,
-{
-    let ClusterFarmerIdentifyBroadcast {
-        farmer_id,
-        fingerprint,
-    } = identify_message;
-
-    for KnownFarmInsertResult {
-        farm_index,
-        farm_id,
-        total_sectors_count,
-        expired_receiver,
-        add,
-        remove,
-    } in known_farms
-        .insert_or_update_farmer(farmer_id, fingerprint, farms_stream)
-        .await
-    {
-        if remove {
-            remove_farm(
-                farm_id,
-                farm_index,
-                farms_to_add_remove,
-                plotted_pieces.clone(),
+/// Collect `ClusterFarmerFarmDetails` from the farmer by sending a stream request
+fn collect_farmer_farms(farmer_id: FarmerId, nats_client: &NatsClient) -> CollectFarmerFarmsFuture {
+    let nats_client = nats_client.clone();
+    Box::pin(async move {
+        Ok(nats_client
+            .stream_request(
+                &ClusterFarmerFarmDetailsRequest,
+                Some(&farmer_id.to_string()),
             )
-            .await;
-        }
-
-        if add {
-            farms_to_add_remove.push_back(Box::pin(async move {
-                match initialize_farm(
-                    farm_index,
-                    farm_id,
-                    total_sectors_count,
-                    plotted_pieces.clone(),
-                    nats_client,
+            .await
+            .inspect_err(|error| {
+                warn!(
+                    %error,
+                    %farmer_id,
+                    "Failed to request farmer farm details"
                 )
-                .await
-                {
-                    Ok(farm) => {
-                        if remove {
-                            info!(
-                                %farm_index,
-                                %farm_id,
-                                "Farm re-initialized successfully"
-                            );
-                        } else {
-                            info!(
-                                %farm_index,
-                                %farm_id,
-                                "Farm initialized successfully"
-                            );
-                        }
-
-                        Some((farm_index, expired_receiver, farm))
-                    }
-                    Err(error) => {
-                        warn!(
-                            %error,
-                            "Failed to initialize farm {farm_id}"
-                        );
-                        None
-                    }
-                }
-            }));
-        }
-    }
+            })?
+            .collect()
+            .await)
+    })
 }
 
-async fn remove_farm(
+fn remove_farm(
     farm_id: FarmId,
     farm_index: FarmIndex,
     farms_to_add_remove: &mut VecDeque<AddRemoveFuture<'_>>,
