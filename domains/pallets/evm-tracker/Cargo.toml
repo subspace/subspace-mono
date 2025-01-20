@@ -1,5 +1,5 @@
 [package]
-name = "pallet-evm-nonce-tracker"
+name = "pallet-evm-tracker"
 version = "0.1.0"
 authors = ["Subspace Labs <https://subspace.network>"]
 edition = "2021"

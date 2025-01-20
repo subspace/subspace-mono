@@ -1103,10 +1103,10 @@ pub(crate) fn evm_chain_id_storage_key() -> StorageKey {
 pub(crate) fn evm_contract_creation_allowed_by_storage_key() -> StorageKey {
     StorageKey(
         storage_prefix(
-            // This is the name used for `pallet_evm_nonce_tracker` in the `construct_runtime` macro
-            // i.e. `EVMNoncetracker: pallet_evm_nonce_tracker = 84,`
+            // This is the name used for `pallet_evm_tracker` in the `construct_runtime` macro
+            // i.e. `EVMNoncetracker: pallet_evm_tracker = 84,`
             "EVMNoncetracker".as_bytes(),
-            // This is the storage item name used inside `pallet_evm_nonce_tracker`
+            // This is the storage item name used inside `pallet_evm_tracker`
             "ContractCreationAllowedBy".as_bytes(),
         )
         .to_vec(),

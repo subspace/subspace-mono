@@ -3255,10 +3255,10 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
- "pallet-evm-nonce-tracker",
  "pallet-evm-precompile-modexp",
  "pallet-evm-precompile-sha3fips",
  "pallet-evm-precompile-simple",
+ "pallet-evm-tracker",
  "pallet-messenger",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -3312,10 +3312,10 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
- "pallet-evm-nonce-tracker",
  "pallet-evm-precompile-modexp",
  "pallet-evm-precompile-sha3fips",
  "pallet-evm-precompile-simple",
+ "pallet-evm-tracker",
  "pallet-messenger",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -7769,19 +7769,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-evm-nonce-tracker"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-domains",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-evm-precompile-modexp"
 version = "2.0.0-dev"
 source = "git+https://github.com/autonomys/frontier?rev=f80f9e2bad338f3bf3854b256b3c4edea23e5968#f80f9e2bad338f3bf3854b256b3c4edea23e5968"
@@ -7807,6 +7794,19 @@ dependencies = [
  "fp-evm",
  "ripemd",
  "sp-io",
+]
+
+[[package]]
+name = "pallet-evm-tracker"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-domains",
+ "sp-runtime",
 ]
 
 [[package]]

@@ -126,7 +126,7 @@ type CustomSignedExtra = (
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,
     frame_system::CheckMortality<Runtime>,
-    pallet_evm_nonce_tracker::CheckNonce<Runtime>,
+    pallet_evm_tracker::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
     CheckContractCreation,
@@ -155,7 +155,7 @@ const MAX_CONTRACT_RECURSION_DEPTH: u16 = 5;
 /// Otherwise, returns true.
 pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> bool {
     // Only enter recursive code if this account can't create contracts
-    if !pallet_evm_nonce_tracker::Pallet::<Runtime>::is_allowed_to_create_contracts(signer)
+    if !pallet_evm_tracker::Pallet::<Runtime>::is_allowed_to_create_contracts(signer)
         && is_create_contract(call, MAX_CONTRACT_RECURSION_DEPTH)
     {
         return false;
@@ -170,7 +170,7 @@ pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> boo
 /// list. Otherwise, returns true.
 pub fn is_create_unsigned_contract_allowed(call: &RuntimeCall) -> bool {
     // Only enter recursive code if unsigned contracts can't be created
-    if !pallet_evm_nonce_tracker::Pallet::<Runtime>::is_allowed_to_create_unsigned_contracts()
+    if !pallet_evm_tracker::Pallet::<Runtime>::is_allowed_to_create_unsigned_contracts()
         && is_create_contract(call, MAX_CONTRACT_RECURSION_DEPTH)
     {
         return false;
@@ -835,7 +835,7 @@ impl pallet_evm::Config for Runtime {
     type WeightInfo = pallet_evm::weights::SubstrateWeight<Self>;
 }
 
-impl pallet_evm_nonce_tracker::Config for Runtime {}
+impl pallet_evm_tracker::Config for Runtime {}
 
 parameter_types! {
     pub const PostOnlyBlockHash: PostLogContent = PostLogContent::OnlyBlockHash;
@@ -933,7 +933,7 @@ construct_runtime!(
         EVM: pallet_evm = 81,
         EVMChainId: pallet_evm_chain_id = 82,
         BaseFee: pallet_base_fee = 83,
-        EVMNoncetracker: pallet_evm_nonce_tracker = 84,
+        EVMNoncetracker: pallet_evm_tracker = 84,
 
         // domain instance stuff
         SelfDomainId: pallet_domain_id = 90,
@@ -1156,7 +1156,7 @@ fn check_transaction_and_do_pre_dispatch_inner(
                 extra.2,
                 extra.3,
                 extra.4,
-                pallet_evm_nonce_tracker::CheckNonce::from(extra.5 .0),
+                pallet_evm_tracker::CheckNonce::from(extra.5 .0),
                 extra.6,
                 extra.7,
                 extra.8,

@@ -130,7 +130,7 @@ type CustomSignedExtra = (
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,
     frame_system::CheckMortality<Runtime>,
-    pallet_evm_nonce_tracker::CheckNonce<Runtime>,
+    pallet_evm_tracker::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
@@ -645,7 +645,7 @@ impl pallet_evm::OnChargeEVMTransaction<Runtime> for EVMCurrencyAdapter {
     }
 }
 
-impl pallet_evm_nonce_tracker::Config for Runtime {}
+impl pallet_evm_tracker::Config for Runtime {}
 
 impl pallet_evm::Config for Runtime {
     type FeeCalculator = BaseFee;
@@ -756,7 +756,7 @@ construct_runtime!(
         EVM: pallet_evm = 81,
         EVMChainId: pallet_evm_chain_id = 82,
         BaseFee: pallet_base_fee = 83,
-        EVMNoncetracker: pallet_evm_nonce_tracker = 84,
+        EVMNoncetracker: pallet_evm_tracker = 84,
 
         // domain instance stuff
         SelfDomainId: pallet_domain_id = 90,
@@ -969,7 +969,7 @@ fn check_transaction_and_do_pre_dispatch_inner(
                 extra.2,
                 extra.3,
                 extra.4,
-                pallet_evm_nonce_tracker::CheckNonce::from(extra.5 .0),
+                pallet_evm_tracker::CheckNonce::from(extra.5 .0),
                 extra.6,
                 extra.7,
             );
