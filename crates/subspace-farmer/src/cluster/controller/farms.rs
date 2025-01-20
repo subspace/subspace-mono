@@ -31,8 +31,13 @@ use tokio::task;
 use tokio::time::MissedTickBehavior;
 use tracing::{debug, error, info, warn};
 
-type CollectFarmerFarmsFuture =
-    Pin<Box<dyn Future<Output = anyhow::Result<Vec<ClusterFarmerFarmDetails>>>>>;
+type CollectFarmerFarmsFuture = Pin<
+    Box<
+        dyn Future<
+            Output = anyhow::Result<(KnownFarmerInsertResult, Vec<ClusterFarmerFarmDetails>)>,
+        >,
+    >,
+>;
 type AddRemoveFuture<'a> =
     Pin<Box<dyn Future<Output = Option<(FarmIndex, oneshot::Receiver<()>, ClusterFarm)>> + 'a>>;
 
@@ -277,12 +282,13 @@ impl KnownFarmers {
         }
     }
 
-    async fn insert_or_update_farmer(
+    fn insert_or_update_farmer(
         &mut self,
         farmer_id: FarmerId,
         fingerprint: Blake3Hash,
         nats_client: &NatsClient,
-    ) -> Vec<KnownFarmInsertResult> {
+        farms_in_farmer_collector: &mut FuturesUnordered<CollectFarmerFarmsFuture>,
+    ) {
         let result = self
             .known_farmers
             .iter_mut()
@@ -319,14 +325,10 @@ impl KnownFarmers {
             });
 
         if let KnownFarmerInsertResult::NotInserted = result {
-            return vec![];
+            return;
         }
 
-        let Ok(farms) = collect_farmer_farms(farmer_id, nats_client).await else {
-            return vec![];
-        };
-
-        result.process(farms, self)
+        farms_in_farmer_collector.push(collect_farmer_farms(farmer_id, result, nats_client));
     }
 
     fn get_known_farmer(&mut self, farmer_id: FarmerId) -> Option<&mut KnownFarmer> {
@@ -383,6 +385,7 @@ pub async fn maintain_farms(
 ) -> anyhow::Result<()> {
     let mut known_farmers = KnownFarmers::new(identification_broadcast_interval);
 
+    let mut farms_in_farmer_collector = FuturesUnordered::<CollectFarmerFarmsFuture>::new();
     // Futures that need to be processed sequentially in order to add/remove farms, if farm was
     // added, future will resolve with `Some`, `None` if removed
     let mut farms_to_add_remove = VecDeque::<AddRemoveFuture<'_>>::new();
@@ -456,9 +459,20 @@ pub async fn maintain_farms(
                     fingerprint,
                 } = identify_message;
 
-                for farm_insert_result in known_farmers
-                    .insert_or_update_farmer(farmer_id, fingerprint, nats_client)
-                    .await
+                known_farmers.insert_or_update_farmer(
+                    farmer_id,
+                    fingerprint,
+                    nats_client,
+                    &mut farms_in_farmer_collector,
+                );
+            }
+            maybe_new_farmer_farms = farms_in_farmer_collector.select_next_some() => {
+                let Ok((farmer_insert_result, farms)) = maybe_new_farmer_farms else {
+                    // Collecting farmer farms failed, continue
+                    continue;
+                };
+
+                for farm_insert_result in farmer_insert_result.process(farms, &mut known_farmers)
                 {
                     farm_insert_result.process(nats_client, &mut farms_to_add_remove, Arc::clone(plotted_pieces));
                 }
@@ -520,24 +534,31 @@ pub async fn maintain_farms(
 }
 
 /// Collect `ClusterFarmerFarmDetails` from the farmer by sending a stream request
-fn collect_farmer_farms(farmer_id: FarmerId, nats_client: &NatsClient) -> CollectFarmerFarmsFuture {
+fn collect_farmer_farms(
+    farmer_id: FarmerId,
+    result: KnownFarmerInsertResult,
+    nats_client: &NatsClient,
+) -> CollectFarmerFarmsFuture {
     let nats_client = nats_client.clone();
     Box::pin(async move {
-        Ok(nats_client
-            .stream_request(
-                &ClusterFarmerFarmDetailsRequest,
-                Some(&farmer_id.to_string()),
-            )
-            .await
-            .inspect_err(|error| {
-                warn!(
-                    %error,
-                    %farmer_id,
-                    "Failed to request farmer farm details"
+        Ok((
+            result,
+            nats_client
+                .stream_request(
+                    &ClusterFarmerFarmDetailsRequest,
+                    Some(&farmer_id.to_string()),
                 )
-            })?
-            .collect()
-            .await)
+                .await
+                .inspect_err(|error| {
+                    warn!(
+                        %error,
+                        %farmer_id,
+                        "Failed to request farmer farm details"
+                    )
+                })?
+                .collect()
+                .await,
+        ))
     })
 }
 
