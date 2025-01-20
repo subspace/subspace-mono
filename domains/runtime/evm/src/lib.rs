@@ -165,6 +165,21 @@ pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> boo
     true
 }
 
+/// If anyone is allowed to create contracts, allows contracts. Otherwise, rejects contracts.
+/// Returns false if the call is a contract call, and there is a specific (possibly empty) allow
+/// list. Otherwise, returns true.
+pub fn is_create_unsigned_contract_allowed(call: &RuntimeCall) -> bool {
+    // Only enter recursive code if unsigned contracts can't be created
+    if !pallet_evm_nonce_tracker::Pallet::<Runtime>::is_allowed_to_create_unsigned_contracts()
+        && is_create_contract(call, MAX_CONTRACT_RECURSION_DEPTH)
+    {
+        return false;
+    }
+
+    // If it's not a contract call, or anyone is allowed to create contracts, return true.
+    true
+}
+
 /// Returns true if the call is a contract creation call.
 pub fn is_create_contract(call: &RuntimeCall, mut recursion_depth_left: u16) -> bool {
     if recursion_depth_left == 0 {
@@ -247,6 +262,28 @@ impl SignedExtension for CheckContractCreation {
         len: usize,
     ) -> Result<Self::Pre, TransactionValidityError> {
         self.validate(who, call, info, len)?;
+        Ok(())
+    }
+
+    fn validate_unsigned(
+        call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> TransactionValidity {
+        // Reject unsigned contract creation unless anyone is allowed to create them.
+        if !is_create_unsigned_contract_allowed(call) {
+            InvalidTransaction::Custom(ERR_CONTRACT_CREATION_NOT_ALLOWED).into()
+        } else {
+            Ok(ValidTransaction::default())
+        }
+    }
+
+    fn pre_dispatch_unsigned(
+        call: &Self::Call,
+        info: &DispatchInfoOf<Self::Call>,
+        len: usize,
+    ) -> Result<(), TransactionValidityError> {
+        Self::validate_unsigned(call, info, len)?;
         Ok(())
     }
 }

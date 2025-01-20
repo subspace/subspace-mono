@@ -101,4 +101,12 @@ impl<T: Config> Pallet<T> {
             .map(|allowed_by| allowed_by.is_allowed(signer))
             .unwrap_or(true)
     }
+
+    /// Returns true if the account is allowed to create contracts.
+    pub fn is_allowed_to_create_unsigned_contracts() -> bool {
+        // Unlike domain instantiation, no storage value means "anyone can create contracts".
+        ContractCreationAllowedBy::<T>::get()
+            .map(|allowed_by| allowed_by.is_anyone_allowed())
+            .unwrap_or(true)
+    }
 }
