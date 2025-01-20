@@ -16,7 +16,8 @@ use crate::farmer_cache::FarmerCache;
 use anyhow::anyhow;
 use futures::channel::oneshot;
 use futures::future::FusedFuture;
-use futures::{select, FutureExt, Stream, StreamExt};
+use futures::stream::FuturesUnordered;
+use futures::{select, FutureExt, StreamExt};
 use parking_lot::Mutex;
 use std::future::{ready, Future};
 use std::pin::{pin, Pin};
@@ -25,6 +26,7 @@ use std::time::{Duration, Instant};
 use tokio::time::MissedTickBehavior;
 use tracing::{debug, info, warn};
 
+type CollectPieceCachesFuture = Pin<Box<dyn Future<Output = anyhow::Result<KnownCache>>>>;
 const SCHEDULE_REINITIALIZATION_DELAY: Duration = Duration::from_secs(3);
 
 #[derive(Debug)]
@@ -60,17 +62,13 @@ impl KnownCaches {
             .collect()
     }
 
-    /// Return `true` if farmer cache reinitialization is required
-    async fn update_cache<Fut, S>(
+    /// Update cache's last identification with given `cache_id` or add it if it doesn't exist
+    fn update_cache(
         &mut self,
         cache_id: CacheId,
-        scheduled_reinitialization_for: &mut Option<Instant>,
         nats_client: &NatsClient,
-        piece_cache_stream: Fut,
-    ) where
-        Fut: Future<Output = Option<S>>,
-        S: Stream<Item = ClusterPieceCacheDetails> + Unpin,
-    {
+        piece_caches_to_add: &mut FuturesUnordered<CollectPieceCachesFuture>,
+    ) {
         if self.known_caches.iter_mut().any(|known_cache| {
             if known_cache.cache_id == cache_id {
                 known_cache.last_identification = Instant::now();
@@ -82,34 +80,7 @@ impl KnownCaches {
             return;
         }
 
-        let Some(piece_caches_stream) = piece_cache_stream.await else {
-            return;
-        };
-        let piece_caches = piece_caches_stream
-            .map(
-                |ClusterPieceCacheDetails {
-                     piece_cache_id,
-                     max_num_elements,
-                 }| {
-                    debug!(%cache_id, %piece_cache_id, %max_num_elements, "Discovered new piece cache");
-                    Arc::new(ClusterPieceCache::new(
-                        piece_cache_id,
-                        max_num_elements,
-                        nats_client.clone(),
-                    ))
-                },
-            )
-            .collect()
-            .await;
-
-        info!(%cache_id, "New cache discovered, scheduling reinitialization");
-        scheduled_reinitialization_for.replace(Instant::now() + SCHEDULE_REINITIALIZATION_DELAY);
-
-        self.known_caches.push(KnownCache {
-            cache_id,
-            last_identification: Instant::now(),
-            piece_caches,
-        });
+        piece_caches_to_add.push(collect_new_cache(cache_id, nats_client));
     }
 
     fn remove_expired(&mut self) -> impl Iterator<Item = KnownCache> + '_ {
@@ -127,6 +98,8 @@ pub async fn maintain_caches(
     identification_broadcast_interval: Duration,
 ) -> anyhow::Result<()> {
     let mut known_caches = KnownCaches::new(identification_broadcast_interval);
+
+    let mut piece_caches_to_add = FuturesUnordered::new();
 
     let mut scheduled_reinitialization_for = None;
     let mut cache_reinitialization =
@@ -196,23 +169,20 @@ pub async fn maintain_caches(
 
                 known_caches.update_cache(
                     cache_id,
-                    &mut scheduled_reinitialization_for,
                     nats_client,
-                    async {
-                        nats_client
-                            .stream_request(
-                                &ClusterCacheDetailsRequest,
-                                Some(&cache_id.to_string()),
-                            )
-                            .await
-                            .inspect_err(|error| warn!(
-                                %error,
-                                %cache_id,
-                                "Failed to request farmer farm details"
-                            ))
-                            .ok()
-                    },
-                ).await
+                    &mut piece_caches_to_add,
+                )
+            }
+            maybe_new_cache = piece_caches_to_add.select_next_some() => {
+                let Ok(new_cache) = maybe_new_cache else {
+                    // Collecting new cache failed, continue
+                    continue;
+                };
+
+                info!(cache_id = %new_cache.cache_id, "New cache discovered, scheduling reinitialization");
+                scheduled_reinitialization_for.replace(Instant::now() + SCHEDULE_REINITIALIZATION_DELAY);
+
+                known_caches.known_caches.push(new_cache);
             }
             _ = cache_pruning_interval.tick().fuse() => {
                 let mut reinit = false;
@@ -236,4 +206,43 @@ pub async fn maintain_caches(
             }
         }
     }
+}
+
+/// Collect piece caches from the cache and convert them to `ClusterPieceCache` by sending a stream request,
+/// then construct a `KnownCache` instance.
+fn collect_new_cache(cache_id: CacheId, nats_client: &NatsClient) -> CollectPieceCachesFuture {
+    let nats_client = nats_client.clone();
+    Box::pin(async move {
+        let piece_caches = nats_client
+            .stream_request(&ClusterCacheDetailsRequest, Some(&cache_id.to_string()))
+            .await
+            .inspect_err(|error| {
+                warn!(
+                    %error,
+                    %cache_id,
+                    "Failed to request farmer farm details"
+                )
+            })?
+            .map(
+                |ClusterPieceCacheDetails {
+                     piece_cache_id,
+                     max_num_elements,
+                 }| {
+                    debug!(%cache_id, %piece_cache_id, %max_num_elements, "Discovered new piece cache");
+                    Arc::new(ClusterPieceCache::new(
+                        piece_cache_id,
+                        max_num_elements,
+                        nats_client.clone(),
+                    ))
+                },
+            )
+            .collect()
+            .await;
+
+        Ok(KnownCache {
+            cache_id,
+            last_identification: Instant::now(),
+            piece_caches,
+        })
+    })
 }
