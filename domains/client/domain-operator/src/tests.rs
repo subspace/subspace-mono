@@ -13,6 +13,7 @@ use domain_test_service::EcdsaKeyring::{Alice, Bob, Charlie, Eve};
 use domain_test_service::Sr25519Keyring::{self, Alice as Sr25519Alice, Ferdie};
 use domain_test_service::{construct_extrinsic_generic, AUTO_ID_DOMAIN_ID, EVM_DOMAIN_ID};
 use futures::StreamExt;
+use hex_literal::hex;
 use pallet_domains::OperatorConfig;
 use pallet_messenger::ChainAllowlistUpdate;
 use sc_client_api::{Backend, BlockBackend, BlockchainEvents, HeaderBackend};
@@ -32,7 +33,7 @@ use sp_domains::core_api::DomainCoreApi;
 use sp_domains::merkle_tree::MerkleTree;
 use sp_domains::{
     Bundle, BundleValidity, ChainId, ChannelId, DomainsApi, HeaderHashingFor, InboxedBundle,
-    InvalidBundleType, Transfers,
+    InvalidBundleType, PermissionedActionAllowedBy, Transfers,
 };
 use sp_domains_fraud_proof::fraud_proof::{
     ApplyExtrinsicMismatch, ExecutionPhase, FinalizeBlockMismatch, FraudProofVariant,
@@ -3797,6 +3798,143 @@ async fn test_domain_sudo_calls() {
         alice
             .get_open_channel_for_chain(ChainId::Consensus)
             .is_some()
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // check initial contract allow list
+    assert!(
+        alice.evm_contract_creation_allowed_by() == Some(PermissionedActionAllowedBy::Anyone),
+        "initial contract allow list should be anyone"
+    );
+
+    // set EVM contract allow list on Domain using domain sudo.
+    // Sudo on consensus chain will send a sudo call to domain
+    // once the call is executed in the domain, list will be updated.
+
+    // Start with a redundant set to make sure the test framework works.
+    let mut allow_list = PermissionedActionAllowedBy::Anyone;
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // Then use actual settings
+    allow_list = PermissionedActionAllowedBy::Accounts(vec![]);
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // 1 account in the allow list
+    allow_list = PermissionedActionAllowedBy::Accounts(vec![hex!(
+        "5102030405060708091011121314151617181920"
+    )
+    .into()]);
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // Multiple accounts in the allow list
+    allow_list = PermissionedActionAllowedBy::Accounts(vec![
+        hex!("6102030405060708091011121314151617181920").into(),
+        hex!("7102030405060708091011121314151617181920").into(),
+        hex!("8102030405060708091011121314151617181920").into(),
+    ]);
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
     })
     .await
     .unwrap();

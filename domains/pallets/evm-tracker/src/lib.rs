@@ -24,6 +24,7 @@ mod check_nonce;
 pub use check_nonce::CheckNonce;
 pub use pallet::*;
 use sp_core::U256;
+use sp_domains::PermissionedActionAllowedBy;
 
 #[frame_support::pallet]
 mod pallet {
@@ -108,5 +109,11 @@ impl<T: Config> Pallet<T> {
         ContractCreationAllowedBy::<T>::get()
             .map(|allowed_by| allowed_by.is_anyone_allowed())
             .unwrap_or(true)
+    }
+
+    /// Returns the current contract creation allow list.
+    /// Mainly used in tests.
+    pub fn contract_creation_allowed_by() -> Option<PermissionedActionAllowedBy<T::AccountId>> {
+        ContractCreationAllowedBy::<T>::get()
     }
 }

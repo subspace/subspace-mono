@@ -18,8 +18,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use core::mem;
 pub use domain_runtime_primitives::opaque::Header;
 use domain_runtime_primitives::{
-    block_weights, maximum_block_length, maximum_domain_block_weight, ERR_BALANCE_OVERFLOW,
-    ERR_NONCE_OVERFLOW, EXISTENTIAL_DEPOSIT, SLOT_DURATION,
+    block_weights, maximum_block_length, maximum_domain_block_weight, EthereumAccountId,
+    ERR_BALANCE_OVERFLOW, ERR_NONCE_OVERFLOW, EXISTENTIAL_DEPOSIT, SLOT_DURATION,
 };
 pub use domain_runtime_primitives::{
     opaque, Balance, BlockNumber, CheckExtrinsicsValidityError, DecodeExtrinsicError, Hash,
@@ -52,7 +52,7 @@ use pallet_transporter::EndpointHandler;
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{Get, OpaqueMetadata, H160, H256, U256};
-use sp_domains::{DomainAllowlistUpdates, DomainId, Transfers};
+use sp_domains::{DomainAllowlistUpdates, DomainId, PermissionedActionAllowedBy, Transfers};
 use sp_messenger::endpoint::{Endpoint, EndpointHandler as EndpointHandlerT, EndpointId};
 use sp_messenger::messages::{
     BlockMessagesWithStorageKey, ChainId, ChannelId, CrossDomainMessage, FeeModel, MessageId,
@@ -1522,6 +1522,12 @@ impl_runtime_apis! {
 
         fn consensus_transaction_byte_fee() -> Balance {
             BlockFees::consensus_chain_byte_fee()
+        }
+    }
+
+    impl domain_test_primitives::EvmOnchainStateApi<Block> for Runtime {
+        fn evm_contract_creation_allowed_by() -> Option<PermissionedActionAllowedBy<EthereumAccountId>> {
+            EVMNoncetracker::contract_creation_allowed_by()
         }
     }
 

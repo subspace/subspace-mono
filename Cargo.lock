@@ -2611,9 +2611,11 @@ dependencies = [
  "frame-system",
  "futures",
  "futures-timer",
+ "hex-literal",
  "pallet-balances",
  "pallet-domain-sudo",
  "pallet-domains",
+ "pallet-evm-tracker",
  "pallet-messenger",
  "pallet-sudo",
  "pallet-timestamp",
@@ -2806,8 +2808,10 @@ dependencies = [
 name = "domain-test-primitives"
 version = "0.1.0"
 dependencies = [
+ "domain-runtime-primitives",
  "parity-scale-codec",
  "sp-api",
+ "sp-domains",
  "sp-messenger",
  "subspace-runtime-primitives",
 ]
