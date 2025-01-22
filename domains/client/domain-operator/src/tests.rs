@@ -8,10 +8,13 @@ use codec::{Decode, Encode};
 use cross_domain_message_gossip::get_channel_state;
 use domain_runtime_primitives::{AccountId20Converter, AccountIdConverter, Hash};
 use domain_test_primitives::{OnchainStateApi, TimestampApi};
-use domain_test_service::evm_domain_test_runtime::{Header, UncheckedExtrinsic};
+use domain_test_service::evm_domain_test_runtime::{
+    Header, Runtime as TestRuntime, RuntimeCall, UncheckedExtrinsic as EvmUncheckedExtrinsic,
+};
 use domain_test_service::EcdsaKeyring::{Alice, Bob, Charlie, Eve};
 use domain_test_service::Sr25519Keyring::{self, Alice as Sr25519Alice, Ferdie};
 use domain_test_service::{construct_extrinsic_generic, AUTO_ID_DOMAIN_ID, EVM_DOMAIN_ID};
+use ethereum::TransactionV2 as EthereumTransaction;
 use futures::StreamExt;
 use hex_literal::hex;
 use pallet_domains::OperatorConfig;
@@ -27,10 +30,11 @@ use sp_api::{ProvideRuntimeApi, StorageProof};
 use sp_consensus::SyncOracle;
 use sp_core::storage::StateVersion;
 use sp_core::traits::{FetchRuntimeCode, SpawnEssentialNamed};
-use sp_core::{Pair, H256};
+use sp_core::{Pair, H256, U256};
 use sp_domain_digests::AsPredigest;
 use sp_domains::core_api::DomainCoreApi;
 use sp_domains::merkle_tree::MerkleTree;
+use sp_domains::test_ethereum::{max_extrinsic_gas, AccountInfo};
 use sp_domains::{
     Bundle, BundleValidity, ChainId, ChannelId, DomainsApi, HeaderHashingFor, InboxedBundle,
     InvalidBundleType, PermissionedActionAllowedBy, Transfers,
@@ -46,7 +50,7 @@ use sp_messenger::MessengerApi;
 use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafProof as MmrProof};
 use sp_runtime::generic::{BlockId, DigestItem};
 use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Convert, Hash as HashT, Header as HeaderT, Zero,
+    BlakeTwo256, Block as BlockT, Convert, Extrinsic, Hash as HashT, Header as HeaderT, Zero,
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidityError,
@@ -76,6 +80,91 @@ fn number_of(consensus_node: &MockConsensusNode, block_hash: Hash) -> u32 {
         .number(block_hash)
         .unwrap_or_else(|err| panic!("Failed to fetch number for {block_hash}: {err}"))
         .unwrap_or_else(|| panic!("header {block_hash} not in the chain"))
+}
+
+// These functions depend on the macro-constructed `TestRuntime::RuntimeCall` enum, so they can't
+// be shared via `sp_domains::test_ethereum`.
+
+/// Generate a self-contained EVM domain extrinsic, which can be passed to
+/// `runtime_api().check_extrinsics_and_do_pre_dispatch()`.
+pub fn generate_eth_domain_sc_extrinsic(tx: EthereumTransaction) -> EvmUncheckedExtrinsic {
+    let call = pallet_ethereum::Call::<TestRuntime>::transact { transaction: tx };
+    fp_self_contained::UncheckedExtrinsic::new(RuntimeCall::Ethereum(call), None).unwrap()
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum EvmTestCall {
+    Create,
+    Create2,
+    NotCreate,
+}
+
+/// Generate a pallet-evm call, which can be passed to `construct_and_send_extrinsic_with()`.
+/// `use_create` determines whether to use `create`, `create2`, or a non-create call.
+/// `recursion_depth` determines the number of `pallet_utility::Call` wrappers to use.
+pub fn generate_evm_domain_call(
+    account_info: AccountInfo,
+    nonce: Option<U256>,
+    init: Vec<u8>,
+    max_fee_per_gas: U256,
+    use_create: EvmTestCall,
+    recursion_depth: u8,
+) -> <TestRuntime as frame_system::Config>::RuntimeCall {
+    if recursion_depth > 0 {
+        let inner_call = generate_evm_domain_call(
+            account_info,
+            nonce,
+            init.clone(),
+            max_fee_per_gas,
+            use_create,
+            recursion_depth - 1,
+        );
+
+        // TODO:
+        // - randomly choose from the 6 different utility wrapper calls
+        // - test this call as the second call in a batch
+        // - test __Ignore calls are ignored
+        return RuntimeCall::Utility(pallet_utility::Call::<TestRuntime>::batch {
+            calls: vec![inner_call],
+        });
+    }
+
+    let call = match use_create {
+        EvmTestCall::Create => pallet_evm::Call::<TestRuntime>::create {
+            source: account_info.address,
+            init,
+            value: U256::zero(),
+            gas_limit: max_extrinsic_gas::<TestRuntime>(1000),
+            max_fee_per_gas,
+            access_list: vec![],
+            max_priority_fee_per_gas: Some(U256::from(1)),
+            nonce,
+        },
+        EvmTestCall::Create2 => pallet_evm::Call::<TestRuntime>::create2 {
+            source: account_info.address,
+            init,
+            salt: H256::zero(),
+            value: U256::zero(),
+            gas_limit: max_extrinsic_gas::<TestRuntime>(1000),
+            max_fee_per_gas,
+            access_list: vec![],
+            max_priority_fee_per_gas: Some(U256::from(1)),
+            nonce,
+        },
+        EvmTestCall::NotCreate => pallet_evm::Call::<TestRuntime>::call {
+            source: account_info.address,
+            target: account_info.address,
+            input: init,
+            value: U256::zero(),
+            gas_limit: max_extrinsic_gas::<TestRuntime>(1000),
+            max_fee_per_gas,
+            max_priority_fee_per_gas: Some(U256::from(1)),
+            nonce,
+            access_list: vec![],
+        },
+    };
+
+    RuntimeCall::EVM(call)
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -3394,7 +3483,7 @@ async fn set_new_code_should_work() {
             .unwrap()
             .into_iter()
             .map(|encoded_extrinsic| {
-                UncheckedExtrinsic::decode(&mut encoded_extrinsic.encode().as_slice()).unwrap()
+                EvmUncheckedExtrinsic::decode(&mut encoded_extrinsic.encode().as_slice()).unwrap()
             })
             .collect::<Vec<_>>();
         panic!("`set_code` not executed, extrinsics in the block: {extrinsics:?}")

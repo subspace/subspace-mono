@@ -1,14 +1,13 @@
 use codec::Encode;
 use domain_runtime_primitives::{Balance, CheckExtrinsicsValidityError};
 use domain_test_service::evm_domain_test_runtime::{
-    Runtime as TestRuntime, RuntimeCall, Signature, UncheckedExtrinsic as RuntimeUncheckedExtrinsic,
+    Runtime as TestRuntime, RuntimeCall, Signature, UncheckedExtrinsic as EvmUncheckedExtrinsic,
 };
 use domain_test_service::EcdsaKeyring::{Alice, Charlie};
 use domain_test_service::Sr25519Keyring::Ferdie;
 use domain_test_service::{construct_extrinsic_raw_payload, EvmDomainNode};
-use ethereum::TransactionV2 as Transaction;
+use ethereum::TransactionV2 as EthereumTransaction;
 use fp_rpc::EthereumRuntimeRPCApi;
-use pallet_ethereum::Call;
 use rand::distributions::{Distribution, Uniform};
 use sc_client_api::{HeaderBackend, StorageProof};
 use sc_service::{BasePath, Role};
@@ -25,11 +24,13 @@ use sp_runtime::OpaqueExtrinsic;
 use subspace_test_service::{produce_block_with, produce_blocks, MockConsensusNode};
 use tempfile::TempDir;
 
-/// Generate a self-contained EVM domain extrinsic.
 // This function depends on the macro-constructed `TestRuntime::RuntimeCall` enum, so it can't be
 // shared via `sp_domains::test_ethereum`.
-pub fn generate_evm_domain_extrinsic(tx: Transaction) -> RuntimeUncheckedExtrinsic {
-    let call = Call::<TestRuntime>::transact { transaction: tx };
+
+/// Generate a self-contained EVM domain extrinsic, which can be passed to
+/// `runtime_api().check_extrinsics_and_do_pre_dispatch()`.
+pub fn generate_eth_domain_sc_extrinsic(tx: EthereumTransaction) -> EvmUncheckedExtrinsic {
+    let call = pallet_ethereum::Call::<TestRuntime>::transact { transaction: tx };
     fp_self_contained::UncheckedExtrinsic::new(RuntimeCall::Ethereum(call), None).unwrap()
 }
 
@@ -97,7 +98,7 @@ async fn benchmark_bundle_with_evm_tx(
                     vec![1u8; 100],
                     gas_price,
                 );
-                generate_evm_domain_extrinsic(evm_tx)
+                generate_eth_domain_sc_extrinsic(evm_tx)
             }
             1 => {
                 let evm_tx = generate_eip2930_tx::<TestRuntime>(
@@ -107,7 +108,7 @@ async fn benchmark_bundle_with_evm_tx(
                     vec![1u8; 100],
                     gas_price,
                 );
-                generate_evm_domain_extrinsic(evm_tx)
+                generate_eth_domain_sc_extrinsic(evm_tx)
             }
             2 => {
                 let evm_tx = generate_legacy_tx::<TestRuntime>(
@@ -117,7 +118,7 @@ async fn benchmark_bundle_with_evm_tx(
                     vec![1u8; 100],
                     gas_price,
                 );
-                generate_evm_domain_extrinsic(evm_tx)
+                generate_eth_domain_sc_extrinsic(evm_tx)
             }
             3 => {
                 let ecdsa_key = Pair::from_seed_slice(&account_info.private_key.0).unwrap();
@@ -624,7 +625,15 @@ async fn test_evm_domain_block_fee() {
     // Construct and send evm transaction
     #[allow(clippy::type_complexity)]
     let tx_generators: Vec<
-        Box<dyn Fn(AccountInfo, U256, ethereum::TransactionAction, Vec<u8>, U256) -> Transaction>,
+        Box<
+            dyn Fn(
+                AccountInfo,
+                U256,
+                ethereum::TransactionAction,
+                Vec<u8>,
+                U256,
+            ) -> EthereumTransaction,
+        >,
     > = vec![
         Box::new(generate_eip2930_tx::<TestRuntime>),
         Box::new(generate_eip1559_tx::<TestRuntime>),
@@ -635,7 +644,7 @@ async fn test_evm_domain_block_fee() {
         .zip(tx_generators.into_iter())
         .enumerate()
     {
-        let tx = generate_evm_domain_extrinsic(tx_generator(
+        let tx = generate_eth_domain_sc_extrinsic(tx_generator(
             acc.clone(),
             U256::zero(),
             ethereum::TransactionAction::Create,

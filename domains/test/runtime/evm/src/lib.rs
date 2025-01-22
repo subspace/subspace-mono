@@ -724,6 +724,13 @@ impl pallet_domain_sudo::Config for Runtime {
     type IntoRuntimeCall = IntoRuntimeCall;
 }
 
+impl pallet_utility::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
+    type PalletsOrigin = OriginCaller;
+    type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 //
 // NOTE: Currently domain runtime does not naturally support the pallets with inherent extrinsics.
@@ -733,6 +740,7 @@ construct_runtime!(
         System: frame_system = 0,
         Timestamp: pallet_timestamp = 1,
         ExecutivePallet: domain_pallet_executive = 2,
+        Utility: pallet_utility = 8,
 
         // monetary stuff
         Balances: pallet_balances = 20,
