@@ -1,6 +1,3 @@
-use crate::test_ethereum_tx::{
-    EIP1559UnsignedTransaction, EIP2930UnsignedTransaction, LegacyUnsignedTransaction,
-};
 use codec::Encode;
 use domain_runtime_primitives::{Balance, CheckExtrinsicsValidityError};
 use domain_test_service::evm_domain_test_runtime::{
@@ -11,125 +8,27 @@ use domain_test_service::Sr25519Keyring::Ferdie;
 use domain_test_service::{construct_extrinsic_raw_payload, EvmDomainNode};
 use ethereum::TransactionV2 as Transaction;
 use fp_rpc::EthereumRuntimeRPCApi;
-use frame_support::pallet_prelude::DispatchClass;
 use pallet_ethereum::Call;
-use pallet_evm::GasWeightMapping;
 use rand::distributions::{Distribution, Uniform};
 use sc_client_api::{HeaderBackend, StorageProof};
 use sc_service::{BasePath, Role};
 use sp_api::{ApiExt, ProvideRuntimeApi, TransactionOutcome};
 use sp_core::ecdsa::Pair;
-use sp_core::{keccak_256, Pair as _, H160, H256, U256};
+use sp_core::{keccak_256, Pair as _, U256};
 use sp_domains::core_api::DomainCoreApi;
+use sp_domains::test_ethereum::{
+    address_build, generate_eip1559_tx, generate_eip2930_tx, generate_legacy_tx, AccountInfo,
+};
 use sp_runtime::traits::{Extrinsic, Zero};
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::OpaqueExtrinsic;
 use subspace_test_service::{produce_block_with, produce_blocks, MockConsensusNode};
 use tempfile::TempDir;
 
-#[derive(Clone)]
-pub struct AccountInfo {
-    pub address: H160,
-    pub private_key: H256,
-}
-
-fn address_build(seed_number: u128) -> AccountInfo {
-    let mut seed = [0u8; 32];
-    seed[0..16].copy_from_slice(&seed_number.to_be_bytes());
-    let private_key = H256::from_slice(&seed);
-    let secret_key = libsecp256k1::SecretKey::parse_slice(&private_key[..]).unwrap();
-    let public_key = &libsecp256k1::PublicKey::from_secret_key(&secret_key).serialize()[1..65];
-    let address = H160::from(H256::from(keccak_256(public_key)));
-
-    let mut data = [0u8; 32];
-    data[0..20].copy_from_slice(&address[..]);
-
-    AccountInfo {
-        private_key,
-        address,
-    }
-}
-
-fn generate_legacy_tx(
-    account_info: AccountInfo,
-    nonce: U256,
-    action: ethereum::TransactionAction,
-    input: Vec<u8>,
-    gas_price: U256,
-) -> Transaction {
-    let limits: frame_system::limits::BlockWeights =
-        <TestRuntime as frame_system::Config>::BlockWeights::get();
-    // `limits.get(DispatchClass::Normal).max_extrinsic` is too large to use as `gas_limit`
-    // thus use `base_extrinsic`
-    let max_extrinsic = limits.get(DispatchClass::Normal).base_extrinsic * 1000;
-    let max_extrinsic_gas =
-        <TestRuntime as pallet_evm::Config>::GasWeightMapping::weight_to_gas(max_extrinsic);
-
-    LegacyUnsignedTransaction {
-        nonce,
-        gas_price,
-        gas_limit: U256::from(max_extrinsic_gas),
-        action,
-        value: U256::zero(),
-        input,
-    }
-    .sign(&account_info.private_key)
-}
-
-fn generate_eip2930_tx(
-    account_info: AccountInfo,
-    nonce: U256,
-    action: ethereum::TransactionAction,
-    input: Vec<u8>,
-    gas_price: U256,
-) -> Transaction {
-    let limits: frame_system::limits::BlockWeights =
-        <TestRuntime as frame_system::Config>::BlockWeights::get();
-    // `limits.get(DispatchClass::Normal).max_extrinsic` is too large to use as `gas_limit`
-    // thus use `base_extrinsic`
-    let max_extrinsic = limits.get(DispatchClass::Normal).base_extrinsic * 100;
-    let max_extrinsic_gas =
-        <TestRuntime as pallet_evm::Config>::GasWeightMapping::weight_to_gas(max_extrinsic);
-
-    EIP2930UnsignedTransaction {
-        nonce,
-        gas_price,
-        gas_limit: U256::from(max_extrinsic_gas),
-        action,
-        value: U256::one(),
-        input,
-    }
-    .sign(&account_info.private_key, None)
-}
-
-fn generate_eip1559_tx(
-    account_info: AccountInfo,
-    nonce: U256,
-    action: ethereum::TransactionAction,
-    input: Vec<u8>,
-    gas_price: U256,
-) -> Transaction {
-    let limits: frame_system::limits::BlockWeights =
-        <TestRuntime as frame_system::Config>::BlockWeights::get();
-    // `limits.get(DispatchClass::Normal).max_extrinsic` is too large to use as `gas_limit`
-    // thus use `base_extrinsic`
-    let max_extrinsic = limits.get(DispatchClass::Normal).base_extrinsic * 1000;
-    let max_extrinsic_gas =
-        <TestRuntime as pallet_evm::Config>::GasWeightMapping::weight_to_gas(max_extrinsic);
-
-    EIP1559UnsignedTransaction {
-        nonce,
-        max_priority_fee_per_gas: U256::from(1),
-        max_fee_per_gas: gas_price,
-        gas_limit: U256::from(max_extrinsic_gas),
-        action,
-        value: U256::zero(),
-        input,
-    }
-    .sign(&account_info.private_key, None)
-}
-
-fn generate_evm_domain_extrinsic(tx: Transaction) -> RuntimeUncheckedExtrinsic {
+/// Generate a self-contained EVM domain extrinsic.
+// This function depends on the macro-constructed `TestRuntime::RuntimeCall` enum, so it can't be
+// shared via `sp_domains::test_ethereum`.
+pub fn generate_evm_domain_extrinsic(tx: Transaction) -> RuntimeUncheckedExtrinsic {
     let call = Call::<TestRuntime>::transact { transaction: tx };
     fp_self_contained::UncheckedExtrinsic::new(RuntimeCall::Ethereum(call), None).unwrap()
 }
@@ -191,7 +90,7 @@ async fn benchmark_bundle_with_evm_tx(
         );
         let extrinsic = match tx_type_to_use {
             0 => {
-                let evm_tx = generate_eip1559_tx(
+                let evm_tx = generate_eip1559_tx::<TestRuntime>(
                     account_info.clone(),
                     U256::zero(),
                     ethereum::TransactionAction::Create,
@@ -201,7 +100,7 @@ async fn benchmark_bundle_with_evm_tx(
                 generate_evm_domain_extrinsic(evm_tx)
             }
             1 => {
-                let evm_tx = generate_eip2930_tx(
+                let evm_tx = generate_eip2930_tx::<TestRuntime>(
                     account_info.clone(),
                     U256::zero(),
                     ethereum::TransactionAction::Create,
@@ -211,7 +110,7 @@ async fn benchmark_bundle_with_evm_tx(
                 generate_evm_domain_extrinsic(evm_tx)
             }
             2 => {
-                let evm_tx = generate_legacy_tx(
+                let evm_tx = generate_legacy_tx::<TestRuntime>(
                     account_info.clone(),
                     U256::zero(),
                     ethereum::TransactionAction::Create,
@@ -727,9 +626,9 @@ async fn test_evm_domain_block_fee() {
     let tx_generators: Vec<
         Box<dyn Fn(AccountInfo, U256, ethereum::TransactionAction, Vec<u8>, U256) -> Transaction>,
     > = vec![
-        Box::new(generate_eip2930_tx),
-        Box::new(generate_eip1559_tx),
-        Box::new(generate_legacy_tx),
+        Box::new(generate_eip2930_tx::<TestRuntime>),
+        Box::new(generate_eip1559_tx::<TestRuntime>),
+        Box::new(generate_legacy_tx::<TestRuntime>),
     ];
     for (i, (acc, tx_generator)) in account_infos
         .iter()

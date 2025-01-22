@@ -31,8 +31,6 @@ mod host_functions;
 mod runtime_interface;
 pub mod storage_proof;
 #[cfg(test)]
-pub mod test_ethereum_tx;
-#[cfg(test)]
 mod tests;
 pub mod verification;
 

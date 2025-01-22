@@ -38,6 +38,14 @@ subspace-core-primitives = { version = "0.1.0", default-features = false, path =
 subspace-runtime-primitives = { version = "0.1.0", default-features = false, path = "../subspace-runtime-primitives" }
 trie-db = { version = "0.29.1", default-features = false }
 
+# test-ethereum dependencies
+ethereum = { version = "0.15.0", optional = true }
+fp-self-contained = { version = "1.0.0-dev", git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968", features = ['default'], optional = true }
+frame-system = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", optional = true }
+libsecp256k1 = { version = "0.7.1", features = ["static-context", "hmac"], optional = true }
+pallet-evm = { version = "6.0.0-dev", git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968", default-features = false, optional = true }
+rlp = { version = "0.5.2", optional = true }
+
 [dev-dependencies]
 num-traits = "0.2.18"
 rand = { version = "0.8.5", features = ["min_const_gen"] }
@@ -70,3 +78,11 @@ std = [
     "trie-db/std",
 ]
 runtime-benchmarks = []
+test-ethereum = [
+    "ethereum",
+    "fp-self-contained",
+    "frame-system",
+    "libsecp256k1",
+    "pallet-evm",
+    "rlp",
+]

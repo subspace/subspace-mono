@@ -23,6 +23,10 @@ pub mod extrinsics;
 pub mod merkle_tree;
 pub mod proof_provider_and_verifier;
 pub mod storage;
+#[cfg(any(test, feature = "test-ethereum"))]
+pub mod test_ethereum;
+#[cfg(any(test, feature = "test-ethereum"))]
+pub mod test_ethereum_tx;
 #[cfg(test)]
 mod tests;
 pub mod valued_trie;
