@@ -47,6 +47,7 @@ use pallet_evm::{
     Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
     IdentityAddressMapping, Runner,
 };
+use pallet_evm_tracker::traits::{MaybeIntoEthCall, MaybeIntoEvmCall};
 use pallet_transporter::EndpointHandler;
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
@@ -663,6 +664,16 @@ impl pallet_evm::Config for Runtime {
     type WeightInfo = pallet_evm::weights::SubstrateWeight<Self>;
 }
 
+impl MaybeIntoEvmCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_evm::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_evm_call(&self) -> Option<&pallet_evm::Call<Runtime>> {
+        match self {
+            RuntimeCall::EVM(call) => Some(call),
+            _ => None,
+        }
+    }
+}
+
 parameter_types! {
     pub const PostOnlyBlockHash: PostLogContent = PostLogContent::OnlyBlockHash;
 }
@@ -672,6 +683,16 @@ impl pallet_ethereum::Config for Runtime {
     type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
     type PostLogContent = PostOnlyBlockHash;
     type ExtraDataLength = ConstU32<30>;
+}
+
+impl MaybeIntoEthCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_ethereum::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_eth_call(&self) -> Option<&pallet_ethereum::Call<Runtime>> {
+        match self {
+            RuntimeCall::Ethereum(call) => Some(call),
+            _ => None,
+        }
+    }
 }
 
 parameter_types! {

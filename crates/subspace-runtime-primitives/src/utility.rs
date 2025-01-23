@@ -1,11 +1,9 @@
 //! Runtime primitives for pallet-utility.
 
+use frame_system::pallet_prelude::RuntimeCallFor;
 use scale_info::prelude::collections::VecDeque;
 
-/// Type alias used to get the runtime call type.
-pub type RuntimeCallFor<Runtime> = <Runtime as pallet_utility::Config>::RuntimeCall;
-
-/// Trait used to convert from a specific `RuntimeCall` type to `pallet-utility::Call<Runtime>`.
+/// Trait used to convert from a generated `RuntimeCall` type to `pallet_utility::Call<Runtime>`.
 pub trait MaybeIntoUtilityCall<Runtime>
 where
     Runtime: pallet_utility::Config,
@@ -23,8 +21,10 @@ pub fn nested_utility_call_iter<Runtime>(
     call: &RuntimeCallFor<Runtime>,
 ) -> impl Iterator<Item = &RuntimeCallFor<Runtime>>
 where
-    Runtime: pallet_utility::Config,
+    Runtime: frame_system::Config + pallet_utility::Config,
     RuntimeCallFor<Runtime>: MaybeIntoUtilityCall<Runtime>,
+    for<'block> &'block RuntimeCallFor<Runtime>:
+        From<&'block <Runtime as pallet_utility::Config>::RuntimeCall>,
 {
     // Instead of using recursion, we allocate references to each call on the heap.
     // TODO: re-use the same memory with an enum for a call ref, a boxed call, or a vec of calls
@@ -38,12 +38,12 @@ where
                 pallet_utility::Call::batch { calls }
                 | pallet_utility::Call::batch_all { calls }
                 | pallet_utility::Call::force_batch { calls } => calls.iter().for_each(|call| {
-                    new_calls.push_front(call);
+                    new_calls.push_front(call.into());
                 }),
                 pallet_utility::Call::as_derivative { call, .. }
                 | pallet_utility::Call::dispatch_as { call, .. }
                 | pallet_utility::Call::with_weight { call, .. } => {
-                    new_calls.push_front(call.as_ref())
+                    new_calls.push_front(call.as_ref().into())
                 }
                 pallet_utility::Call::__Ignore(..) => {}
             }

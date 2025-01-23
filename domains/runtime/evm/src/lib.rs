@@ -23,8 +23,8 @@ pub use domain_runtime_primitives::{
     EXISTENTIAL_DEPOSIT,
 };
 use domain_runtime_primitives::{
-    CheckExtrinsicsValidityError, DecodeExtrinsicError, HoldIdentifier, ERR_BALANCE_OVERFLOW,
-    ERR_CONTRACT_CREATION_NOT_ALLOWED, ERR_NONCE_OVERFLOW, SLOT_DURATION,
+    CheckExtrinsicsValidityError, DecodeExtrinsicError, EthereumAccountId, HoldIdentifier,
+    ERR_BALANCE_OVERFLOW, ERR_CONTRACT_CREATION_NOT_ALLOWED, ERR_NONCE_OVERFLOW, SLOT_DURATION,
 };
 use fp_self_contained::{CheckedSignature, SelfContainedCall};
 use frame_support::dispatch::{DispatchClass, DispatchInfo, GetDispatchInfo};
@@ -40,6 +40,7 @@ use frame_support::weights::constants::{ParityDbWeight, WEIGHT_REF_TIME_PER_SECO
 use frame_support::weights::{ConstantMultiplier, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::limits::{BlockLength, BlockWeights};
+use frame_system::pallet_prelude::{OriginFor, RuntimeCallFor};
 use pallet_block_fees::fees::OnChargeDomainTransaction;
 use pallet_ethereum::{
     PostLogContent, Transaction as EthereumTransaction, TransactionAction, TransactionData,
@@ -49,6 +50,7 @@ use pallet_evm::{
     Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
     IdentityAddressMapping, Runner,
 };
+use pallet_evm_tracker::traits::{AccountIdFor, MaybeIntoEthCall, MaybeIntoEvmCall};
 use pallet_transporter::EndpointHandler;
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
@@ -116,7 +118,7 @@ pub type SignedExtra = (
     frame_system::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-    CheckContractCreation,
+    CheckContractCreation<Runtime>,
 );
 
 /// Custom signed extra for check_and_pre_dispatch.
@@ -130,7 +132,7 @@ type CustomSignedExtra = (
     pallet_evm_tracker::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-    CheckContractCreation,
+    CheckContractCreation<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -152,10 +154,25 @@ pub type Executive = domain_pallet_executive::Executive<
 /// Rejects contracts that can't be created under the current allow list.
 /// Returns false if the call is a contract call, and the account is *not* allowed to call it.
 /// Otherwise, returns true.
-pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> bool {
+pub fn is_create_contract_allowed<Runtime>(
+    call: &RuntimeCallFor<Runtime>,
+    signer: &EthereumAccountId,
+) -> bool
+where
+    Runtime: frame_system::Config<AccountId = EthereumAccountId>
+        + pallet_ethereum::Config
+        + pallet_evm::Config
+        + pallet_utility::Config
+        + pallet_evm_tracker::Config,
+    RuntimeCallFor<Runtime>:
+        MaybeIntoEthCall<Runtime> + MaybeIntoEvmCall<Runtime> + MaybeIntoUtilityCall<Runtime>,
+    for<'block> &'block RuntimeCallFor<Runtime>:
+        From<&'block <Runtime as pallet_utility::Config>::RuntimeCall>,
+    Result<pallet_ethereum::RawOrigin, OriginFor<Runtime>>: From<OriginFor<Runtime>>,
+{
     // Only enter allocating code if this account can't create contracts
     if !pallet_evm_tracker::Pallet::<Runtime>::is_allowed_to_create_contracts(signer)
-        && is_create_contract(call)
+        && is_create_contract::<Runtime>(call)
     {
         return false;
     }
@@ -167,10 +184,22 @@ pub fn is_create_contract_allowed(call: &RuntimeCall, signer: &AccountId) -> boo
 /// If anyone is allowed to create contracts, allows contracts. Otherwise, rejects contracts.
 /// Returns false if the call is a contract call, and there is a specific (possibly empty) allow
 /// list. Otherwise, returns true.
-pub fn is_create_unsigned_contract_allowed(call: &RuntimeCall) -> bool {
+pub fn is_create_unsigned_contract_allowed<Runtime>(call: &RuntimeCallFor<Runtime>) -> bool
+where
+    Runtime: frame_system::Config
+        + pallet_ethereum::Config
+        + pallet_evm::Config
+        + pallet_utility::Config
+        + pallet_evm_tracker::Config,
+    RuntimeCallFor<Runtime>:
+        MaybeIntoEthCall<Runtime> + MaybeIntoEvmCall<Runtime> + MaybeIntoUtilityCall<Runtime>,
+    for<'block> &'block RuntimeCallFor<Runtime>:
+        From<&'block <Runtime as pallet_utility::Config>::RuntimeCall>,
+    Result<pallet_ethereum::RawOrigin, OriginFor<Runtime>>: From<OriginFor<Runtime>>,
+{
     // Only enter allocating code if unsigned contracts can't be created
     if !pallet_evm_tracker::Pallet::<Runtime>::is_allowed_to_create_unsigned_contracts()
-        && is_create_contract(call)
+        && is_create_contract::<Runtime>(call)
     {
         return false;
     }
@@ -180,37 +209,54 @@ pub fn is_create_unsigned_contract_allowed(call: &RuntimeCall) -> bool {
 }
 
 /// Returns true if the call is a contract creation call.
-pub fn is_create_contract(call: &RuntimeCall) -> bool {
+pub fn is_create_contract<Runtime>(call: &RuntimeCallFor<Runtime>) -> bool
+where
+    Runtime: frame_system::Config
+        + pallet_ethereum::Config
+        + pallet_evm::Config
+        + pallet_utility::Config,
+    RuntimeCallFor<Runtime>:
+        MaybeIntoEthCall<Runtime> + MaybeIntoEvmCall<Runtime> + MaybeIntoUtilityCall<Runtime>,
+    for<'block> &'block RuntimeCallFor<Runtime>:
+        From<&'block <Runtime as pallet_utility::Config>::RuntimeCall>,
+    Result<pallet_ethereum::RawOrigin, OriginFor<Runtime>>: From<OriginFor<Runtime>>,
+{
     for call in nested_utility_call_iter::<Runtime>(call) {
-        match call {
-            RuntimeCall::EVM(pallet_evm::Call::create { .. })
-            | RuntimeCall::EVM(pallet_evm::Call::create2 { .. }) => return true,
-            RuntimeCall::Ethereum(pallet_ethereum::Call::transact {
-                transaction: EthereumTransaction::Legacy(transaction),
-                ..
-            }) => {
-                if transaction.action == TransactionAction::Create {
-                    return true;
+        if let Some(call) = call.maybe_into_eth_call() {
+            match call {
+                pallet_ethereum::Call::transact {
+                    transaction: EthereumTransaction::Legacy(transaction),
+                    ..
+                } => {
+                    if transaction.action == TransactionAction::Create {
+                        return true;
+                    }
                 }
-            }
-            RuntimeCall::Ethereum(pallet_ethereum::Call::transact {
-                transaction: EthereumTransaction::EIP2930(transaction),
-                ..
-            }) => {
-                if transaction.action == TransactionAction::Create {
-                    return true;
+                pallet_ethereum::Call::transact {
+                    transaction: EthereumTransaction::EIP2930(transaction),
+                    ..
+                } => {
+                    if transaction.action == TransactionAction::Create {
+                        return true;
+                    }
                 }
-            }
-            RuntimeCall::Ethereum(pallet_ethereum::Call::transact {
-                transaction: EthereumTransaction::EIP1559(transaction),
-                ..
-            }) => {
-                if transaction.action == TransactionAction::Create {
-                    return true;
+                pallet_ethereum::Call::transact {
+                    transaction: EthereumTransaction::EIP1559(transaction),
+                    ..
+                } => {
+                    if transaction.action == TransactionAction::Create {
+                        return true;
+                    }
                 }
+                // Inconclusive, other calls might create contracts.
+                _ => {}
             }
-            // Inconclusive, might contain nested calls
-            _ => {}
+        }
+
+        if let Some(pallet_evm::Call::create { .. } | pallet_evm::Call::create2 { .. }) =
+            call.maybe_into_evm_call()
+        {
+            return true;
         }
     }
 
@@ -219,15 +265,27 @@ pub fn is_create_contract(call: &RuntimeCall) -> bool {
 
 /// Reject contract creation, unless the account is in the current evm contract allow list.
 #[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
-pub struct CheckContractCreation;
+pub struct CheckContractCreation<Runtime>(PhantomData<Runtime>);
 
 // Unsigned calls can't create contracts. Only pallet-evm and pallet-ethereum can create contracts.
 // For pallet-evm all contracts are signed extrinsics, for pallet-ethereum there is only one
 // extrinsic that is self-contained.
-impl SignedExtension for CheckContractCreation {
+impl SignedExtension for CheckContractCreation<Runtime>
+where
+    Runtime: frame_system::Config<AccountId = EthereumAccountId>
+        + pallet_ethereum::Config
+        + pallet_evm::Config
+        + pallet_utility::Config
+        + pallet_evm_tracker::Config,
+    RuntimeCallFor<Runtime>:
+        MaybeIntoEthCall<Runtime> + MaybeIntoEvmCall<Runtime> + MaybeIntoUtilityCall<Runtime>,
+    for<'block> &'block RuntimeCallFor<Runtime>:
+        From<&'block <Runtime as pallet_utility::Config>::RuntimeCall>,
+    Result<pallet_ethereum::RawOrigin, OriginFor<Runtime>>: From<OriginFor<Runtime>>,
+{
     const IDENTIFIER: &'static str = "CheckContractCreation";
-    type AccountId = <Runtime as frame_system::Config>::AccountId;
-    type Call = <Runtime as frame_system::Config>::RuntimeCall;
+    type AccountId = AccountIdFor<Runtime>;
+    type Call = RuntimeCallFor<Runtime>;
     type AdditionalSigned = ();
     type Pre = ();
 
@@ -243,7 +301,7 @@ impl SignedExtension for CheckContractCreation {
         _len: usize,
     ) -> TransactionValidity {
         // Reject contract creation unless the account is in the allow list.
-        if !is_create_contract_allowed(call, who) {
+        if !is_create_contract_allowed::<Runtime>(call, who) {
             InvalidTransaction::Custom(ERR_CONTRACT_CREATION_NOT_ALLOWED).into()
         } else {
             Ok(ValidTransaction::default())
@@ -267,7 +325,7 @@ impl SignedExtension for CheckContractCreation {
         _len: usize,
     ) -> TransactionValidity {
         // Reject unsigned contract creation unless anyone is allowed to create them.
-        if !is_create_unsigned_contract_allowed(call) {
+        if !is_create_unsigned_contract_allowed::<Runtime>(call) {
             InvalidTransaction::Custom(ERR_CONTRACT_CREATION_NOT_ALLOWED).into()
         } else {
             Ok(ValidTransaction::default())
@@ -284,6 +342,8 @@ impl SignedExtension for CheckContractCreation {
     }
 }
 
+// TODO: move this impl into a pallet or its own crate, so it can be used from the production and
+// test runtimes.
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
     type SignedInfo = H160;
 
@@ -307,7 +367,7 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         dispatch_info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Option<TransactionValidity> {
-        if !is_create_contract_allowed(self, &(*info).into()) {
+        if !is_create_contract_allowed::<Runtime>(self, &(*info).into()) {
             return Some(Err(InvalidTransaction::Custom(
                 ERR_CONTRACT_CREATION_NOT_ALLOWED,
             )
@@ -338,7 +398,7 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         dispatch_info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Option<Result<(), TransactionValidityError>> {
-        if !is_create_contract_allowed(self, &(*info).into()) {
+        if !is_create_contract_allowed::<Runtime>(self, &(*info).into()) {
             return Some(Err(InvalidTransaction::Custom(
                 ERR_CONTRACT_CREATION_NOT_ALLOWED,
             )
@@ -831,6 +891,16 @@ impl pallet_evm::Config for Runtime {
     type WeightInfo = pallet_evm::weights::SubstrateWeight<Self>;
 }
 
+impl MaybeIntoEvmCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_evm::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_evm_call(&self) -> Option<&pallet_evm::Call<Runtime>> {
+        match self {
+            RuntimeCall::EVM(call) => Some(call),
+            _ => None,
+        }
+    }
+}
+
 impl pallet_evm_tracker::Config for Runtime {}
 
 parameter_types! {
@@ -842,6 +912,16 @@ impl pallet_ethereum::Config for Runtime {
     type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
     type PostLogContent = PostOnlyBlockHash;
     type ExtraDataLength = ConstU32<30>;
+}
+
+impl MaybeIntoEthCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_ethereum::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_eth_call(&self) -> Option<&pallet_ethereum::Call<Runtime>> {
+        match self {
+            RuntimeCall::Ethereum(call) => Some(call),
+            _ => None,
+        }
+    }
 }
 
 parameter_types! {

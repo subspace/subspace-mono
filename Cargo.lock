@@ -7810,6 +7810,8 @@ version = "0.1.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-ethereum",
+ "pallet-evm",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

@@ -21,6 +21,9 @@
 extern crate alloc;
 
 mod check_nonce;
+pub mod create_contract;
+pub mod traits;
+
 pub use check_nonce::CheckNonce;
 pub use pallet::*;
 use sp_core::U256;
