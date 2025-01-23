@@ -7808,15 +7808,18 @@ dependencies = [
 name = "pallet-evm-tracker"
 version = "0.1.0"
 dependencies = [
+ "domain-runtime-primitives",
  "frame-support",
  "frame-system",
  "pallet-ethereum",
  "pallet-evm",
+ "pallet-utility",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
  "sp-domains",
  "sp-runtime",
+ "subspace-runtime-primitives",
 ]
 
 [[package]]
