@@ -941,6 +941,7 @@ fn is_xdm_mmr_proof_valid(ext: &<Block as BlockT>::Extrinsic) -> Option<bool> {
     }
 }
 
+// This code must be kept in sync with `crates/subspace-runtime/src/object_mapping.rs`.
 fn extract_utility_block_object_mapping(
     mut base_offset: u32,
     objects: &mut Vec<BlockObject>,

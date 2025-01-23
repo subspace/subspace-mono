@@ -13114,6 +13114,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-transaction-payment",
+ "pallet-utility",
  "parity-scale-codec",
  "scale-info",
  "serde",

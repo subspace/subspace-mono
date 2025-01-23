@@ -114,6 +114,7 @@ use subspace_core_primitives::solutions::{
     pieces_to_solution_range, solution_range_to_pieces, SolutionRange,
 };
 use subspace_core_primitives::{PublicKey, Randomness, SlotNumber, U256};
+use subspace_runtime_primitives::utility::MaybeIntoUtilityCall;
 use subspace_runtime_primitives::{
     maximum_normal_block_length, AccountId, Balance, BlockNumber, FindBlockRewardAddress, Hash,
     HoldIdentifier, Moment, Nonce, Signature, SlowAdjustingFeeUpdate, BLOCK_WEIGHT_FOR_2_SEC,
@@ -417,6 +418,16 @@ impl pallet_utility::Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type PalletsOrigin = OriginCaller;
     type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
+impl MaybeIntoUtilityCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_utility::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_utility_call(&self) -> Option<&pallet_utility::Call<Runtime>> {
+        match self {
+            RuntimeCall::Utility(call) => Some(call),
+            _ => None,
+        }
+    }
 }
 
 impl pallet_sudo::Config for Runtime {
