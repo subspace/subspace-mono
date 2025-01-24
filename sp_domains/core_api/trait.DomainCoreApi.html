@@ -1,0 +1,191 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Base API that every domain runtime must implement."><title>DomainCoreApi in sp_domains::core_api - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sp_domains" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0-nightly (bdc6b3de4 2024-12-23)" data-channel="nightly" data-search-js="search-036cda7a.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../sp_domains/index.html">sp_<wbr>domains</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Domain<wbr>Core<wbr>Api</a></h2><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.apply_extrinsic_with_post_state_root" title="apply_extrinsic_with_post_state_root">apply_extrinsic_with_post_state_root</a></li><li><a href="#method.block_digest" title="block_digest">block_digest</a></li><li><a href="#method.block_fees" title="block_fees">block_fees</a></li><li><a href="#method.block_fees_storage_key" title="block_fees_storage_key">block_fees_storage_key</a></li><li><a href="#method.block_weight" title="block_weight">block_weight</a></li><li><a href="#method.check_extrinsics_and_do_pre_dispatch" title="check_extrinsics_and_do_pre_dispatch">check_extrinsics_and_do_pre_dispatch</a></li><li><a href="#method.construct_consensus_chain_byte_fee_extrinsic" title="construct_consensus_chain_byte_fee_extrinsic">construct_consensus_chain_byte_fee_extrinsic</a></li><li><a href="#method.construct_domain_update_chain_allowlist_extrinsic" title="construct_domain_update_chain_allowlist_extrinsic">construct_domain_update_chain_allowlist_extrinsic</a></li><li><a href="#method.construct_set_code_extrinsic" title="construct_set_code_extrinsic">construct_set_code_extrinsic</a></li><li><a href="#method.construct_timestamp_extrinsic" title="construct_timestamp_extrinsic">construct_timestamp_extrinsic</a></li><li><a href="#method.decode_extrinsic" title="decode_extrinsic">decode_extrinsic</a></li><li><a href="#method.extract_signer" title="extract_signer">extract_signer</a></li><li><a href="#method.extrinsic_era" title="extrinsic_era">extrinsic_era</a></li><li><a href="#method.extrinsic_weight" title="extrinsic_weight">extrinsic_weight</a></li><li><a href="#method.initialize_block_with_post_state_root" title="initialize_block_with_post_state_root">initialize_block_with_post_state_root</a></li><li><a href="#method.is_inherent_extrinsic" title="is_inherent_extrinsic">is_inherent_extrinsic</a></li><li><a href="#method.is_within_tx_range" title="is_within_tx_range">is_within_tx_range</a></li><li><a href="#method.transfers" title="transfers">transfers</a></li><li><a href="#method.transfers_storage_key" title="transfers_storage_key">transfers_storage_key</a></li></ul><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block trait-implementation"><li><a href="#impl-RuntimeApiInfo-for-dyn+DomainCoreApi%3CBlock%3E" title="RuntimeApiInfo">RuntimeApiInfo</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In sp_<wbr>domains::<wbr>core_<wbr>api</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">sp_domains</a>::<wbr><a href="index.html">core_api</a></span><h1>Trait <span class="trait">DomainCoreApi</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/sp_domains/core_api.rs.html#19-88">Source</a> </span></div><pre class="rust item-decl"><code>pub trait DomainCoreApi&lt;Block: BlockT&gt;: Core&lt;Block&gt; {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 19 methods</span></summary>    // Provided methods
+    fn <a href="#method.extract_signer" class="fn">extract_signer</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        extrinsics: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;&lt;Block as BlockT&gt;::Extrinsic&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;AccountId&gt;, Block::Extrinsic)&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.is_within_tx_range" class="fn">is_within_tx_range</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        extrinsic: &amp;Block::Extrinsic,
+        bundle_vrf_hash: &amp;U256,
+        tx_range: &amp;U256,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.initialize_block_with_post_state_root" class="fn">initialize_block_with_post_state_root</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        header: &amp;Block::Header,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.apply_extrinsic_with_post_state_root" class="fn">apply_extrinsic_with_post_state_root</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        extrinsic: Block::Extrinsic,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.construct_set_code_extrinsic" class="fn">construct_set_code_extrinsic</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        code: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.construct_timestamp_extrinsic" class="fn">construct_timestamp_extrinsic</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        moment: Moment,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.construct_consensus_chain_byte_fee_extrinsic" class="fn">construct_consensus_chain_byte_fee_extrinsic</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        consensus_chain_byte_fee: Balance,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.construct_domain_update_chain_allowlist_extrinsic" class="fn">construct_domain_update_chain_allowlist_extrinsic</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        updates: <a class="struct" href="../struct.DomainAllowlistUpdates.html" title="struct sp_domains::DomainAllowlistUpdates">DomainAllowlistUpdates</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.is_inherent_extrinsic" class="fn">is_inherent_extrinsic</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        extrinsic: &amp;Block::Extrinsic,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.check_extrinsics_and_do_pre_dispatch" class="fn">check_extrinsics_and_do_pre_dispatch</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        uxts: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Block::Extrinsic&gt;,
+        block_number: NumberFor&lt;Block&gt;,
+        block_hash: Block::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, CheckExtrinsicsValidityError&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decode_extrinsic" class="fn">decode_extrinsic</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        opaque_extrinsic: OpaqueExtrinsic,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, DecodeExtrinsicError&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.extrinsic_era" class="fn">extrinsic_era</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        extrinsic: &amp;Block::Extrinsic,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Era&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.extrinsic_weight" class="fn">extrinsic_weight</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        ext: &amp;Block::Extrinsic,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Weight, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.block_fees" class="fn">block_fees</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../struct.BlockFees.html" title="struct sp_domains::BlockFees">BlockFees</a>&lt;Balance&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.block_digest" class="fn">block_digest</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Digest, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.block_weight" class="fn">block_weight</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Weight, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.transfers" class="fn">transfers</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../struct.Transfers.html" title="struct sp_domains::Transfers">Transfers</a>&lt;Balance&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.transfers_storage_key" class="fn">transfers_storage_key</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.block_fees_storage_key" class="fn">block_fees_storage_key</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt; { ... }
+</details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Base API that every domain runtime must implement.</p>
+</div></details><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.extract_signer" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.extract_signer" class="fn">extract_signer</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    extrinsics: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;&lt;Block as BlockT&gt;::Extrinsic&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;AccountId&gt;, Block::Extrinsic)&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Extracts the optional signer per extrinsic.</p>
+</div></details><section id="method.is_within_tx_range" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.is_within_tx_range" class="fn">is_within_tx_range</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    extrinsic: &amp;Block::Extrinsic,
+    bundle_vrf_hash: &amp;U256,
+    tx_range: &amp;U256,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.initialize_block_with_post_state_root" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.initialize_block_with_post_state_root" class="fn">initialize_block_with_post_state_root</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    header: &amp;Block::Header,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the storage root after initializing the block.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.apply_extrinsic_with_post_state_root" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.apply_extrinsic_with_post_state_root" class="fn">apply_extrinsic_with_post_state_root</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    extrinsic: Block::Extrinsic,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the storage root after applying the extrinsic.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.construct_set_code_extrinsic" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.construct_set_code_extrinsic" class="fn">construct_set_code_extrinsic</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    code: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns an encoded extrinsic aiming to upgrade the runtime using given code.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.construct_timestamp_extrinsic" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.construct_timestamp_extrinsic" class="fn">construct_timestamp_extrinsic</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    moment: Moment,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns an encoded extrinsic to set timestamp.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.construct_consensus_chain_byte_fee_extrinsic" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.construct_consensus_chain_byte_fee_extrinsic" class="fn">construct_consensus_chain_byte_fee_extrinsic</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    consensus_chain_byte_fee: Balance,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns an encoded extrinsic to set domain transaction byte fee.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.construct_domain_update_chain_allowlist_extrinsic" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.construct_domain_update_chain_allowlist_extrinsic" class="fn">construct_domain_update_chain_allowlist_extrinsic</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    updates: <a class="struct" href="../struct.DomainAllowlistUpdates.html" title="struct sp_domains::DomainAllowlistUpdates">DomainAllowlistUpdates</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns an extrinsic to update chain allowlist.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.is_inherent_extrinsic" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.is_inherent_extrinsic" class="fn">is_inherent_extrinsic</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    extrinsic: &amp;Block::Extrinsic,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns true if the extrinsic is an inherent extrinsic.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.check_extrinsics_and_do_pre_dispatch" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.check_extrinsics_and_do_pre_dispatch" class="fn">check_extrinsics_and_do_pre_dispatch</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    uxts: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Block::Extrinsic&gt;,
+    block_number: NumberFor&lt;Block&gt;,
+    block_hash: Block::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, CheckExtrinsicsValidityError&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Checks the validity of array of extrinsics + pre_dispatch
+returning failure on first extrinsic that fails runtime call.
+IMPORTANT: Change <code>CHECK_EXTRINSICS_AND_DO_PRE_DISPATCH_METHOD_NAME</code> constant when this method name is changed</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decode_extrinsic" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.decode_extrinsic" class="fn">decode_extrinsic</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    opaque_extrinsic: OpaqueExtrinsic,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Block::Extrinsic, DecodeExtrinsicError&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Decodes the domain specific extrinsic from the opaque extrinsic.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.extrinsic_era" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.extrinsic_era" class="fn">extrinsic_era</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    extrinsic: &amp;Block::Extrinsic,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Era&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns extrinsic Era if present.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.extrinsic_weight" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.extrinsic_weight" class="fn">extrinsic_weight</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ext: &amp;Block::Extrinsic,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Weight, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the extrinsic weight.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.block_fees" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.block_fees" class="fn">block_fees</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../struct.BlockFees.html" title="struct sp_domains::BlockFees">BlockFees</a>&lt;Balance&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>The accumulated transaction fee of all transactions included in the block.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.block_digest" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.block_digest" class="fn">block_digest</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Digest, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the block digest.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.block_weight" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.block_weight" class="fn">block_weight</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Weight, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the consumed weight of the block.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.transfers" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.transfers" class="fn">transfers</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../struct.Transfers.html" title="struct sp_domains::Transfers">Transfers</a>&lt;Balance&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the transfers for this domain in the block.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.transfers_storage_key" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.transfers_storage_key" class="fn">transfers_storage_key</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the storage key for the Transfers on Domain.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.block_fees_storage_key" class="method"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><h4 class="code-header">fn <a href="#method.block_fees_storage_key" class="fn">block_fees_storage_key</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the storage key for the <code>CollectedBlockFees</code> on Domain.</p>
+</div></details></div><h2 id="trait-implementations" class="section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-RuntimeApiInfo-for-dyn+DomainCoreApi%3CBlock%3E" class="impl"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><a href="#impl-RuntimeApiInfo-for-dyn+DomainCoreApi%3CBlock%3E" class="anchor">§</a><h3 class="code-header">impl&lt;Block: BlockT&gt; RuntimeApiInfo for dyn <a class="trait" href="trait.DomainCoreApi.html" title="trait sp_domains::core_api::DomainCoreApi">DomainCoreApi</a>&lt;Block&gt;</h3></section></summary><div class="impl-items"><details class="toggle" open><summary><section id="associatedconstant.ID" class="associatedconstant trait-impl"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><a href="#associatedconstant.ID" class="anchor">§</a><h4 class="code-header">const <a class="constant">ID</a>: [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.array.html">8</a>]</h4></section></summary><div class='docblock'>The identifier of the runtime api.</div></details><details class="toggle" open><summary><section id="associatedconstant.VERSION" class="associatedconstant trait-impl"><a class="src rightside" href="../../src/sp_domains/core_api.rs.html#17-89">Source</a><a href="#associatedconstant.VERSION" class="anchor">§</a><h4 class="code-header">const <a class="constant">VERSION</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = 1u32</h4></section></summary><div class='docblock'>The version of the runtime api.</div></details></div></details></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../trait.impl/sp_domains/core_api/trait.DomainCoreApi.js" async></script></section></div></main></body></html>

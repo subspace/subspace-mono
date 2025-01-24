@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["VerificationError"],"struct":["SubspaceVerifier","SubspaceVerifierOptions"]};

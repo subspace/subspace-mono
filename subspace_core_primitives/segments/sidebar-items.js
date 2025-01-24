@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ArchivedBlockProgress","SegmentHeader"],"struct":["ArchivedHistorySegment","HistorySize","LastArchivedBlock","RecordedHistorySegment","SegmentCommitment","SegmentIndex"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PosTableType"],"mod":["chia","chiapos","shim"],"trait":["Table","TableGenerator"]};

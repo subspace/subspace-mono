@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Event","IfDisconnected","InboundFailure","OutboundFailure","RegisterError","RequestFailure","ResponseFailure"],"struct":["IncomingRequest","OutgoingResponse","ProtocolConfig","RequestResponseFactoryBehaviour"],"trait":["RequestHandler"]};

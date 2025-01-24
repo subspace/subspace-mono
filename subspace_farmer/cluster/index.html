@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Cluster version of the farmer"><title>subspace_farmer::cluster - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="subspace_farmer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0-nightly (bdc6b3de4 2024-12-23)" data-channel="nightly" data-search-js="search-036cda7a.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../subspace_farmer/index.html">subspace_<wbr>farmer</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module cluster</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#controller" title="Controller">Controller</a></li><li><a href="#farmer" title="Farmer">Farmer</a></li><li><a href="#plotter" title="Plotter">Plotter</a></li><li><a href="#cache" title="Cache">Cache</a></li></ul><h3><a href="#modules">Module Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate subspace_<wbr>farmer</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">subspace_farmer</a></span><h1>Module <span>cluster</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/subspace_farmer/cluster.rs.html#1-57">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Cluster version of the farmer</p>
+<p>This module contains isolated set of modules that implement cluster-specific functionality for
+the farmer, allowing to distribute cooperating components across machines, while still working
+together.</p>
+<p>Specifically, 4 separate components are extracted:</p>
+<ul>
+<li>controller</li>
+<li>farmer</li>
+<li>plotter</li>
+<li>cache</li>
+</ul>
+<h4 id="controller"><a class="doc-anchor" href="#controller">§</a>Controller</h4>
+<p>Controller connects to the node via RPC and DSN. It handles notifications from node and
+orchestrates other components. It will send slot notifications to farmers, store and retrieve
+pieces from caches on requests from DSN, etc.</p>
+<p>While there could be multiple controllers shared between farmers, each controller must have its
+dedicated pool of caches and each cache should belong to a single controller. This allows to
+shut down some controllers for upgrades and other maintenance tasks without affecting farmer’s
+ability to farm and receive rewards.</p>
+<h4 id="farmer"><a class="doc-anchor" href="#farmer">§</a>Farmer</h4>
+<p>Farmer maintains farms with plotted pieces and corresponding metadata. Farmer does audits and
+proving, retrieves pieces from plotted sectors on request, but doesn’t do any caching or P2P
+networking with DSN. When sectors need to be plotted/replotted, request will be sent to Plotter
+to do that instead of doing it locally, though plotter and farmer can be co-located.</p>
+<p>Farmers receive (de-duplicated) slot notifications from all controllers and will send solution
+back to the controller from which they received slot notification.</p>
+<h4 id="plotter"><a class="doc-anchor" href="#plotter">§</a>Plotter</h4>
+<p>Plotter needs to be able to do heavy compute with proportional amount of RAM for plotting
+purposes.</p>
+<p>There could be any number of plotters in a cluster, adding more will increase total cluster
+ability to plot concurrent sectors.</p>
+<h4 id="cache"><a class="doc-anchor" href="#cache">§</a>Cache</h4>
+<p>Cache helps with plotting process and with serving data to DSN. At the same time, writes and
+reads are while random, they are done in large size and low frequency comparing in contrast to
+farmer. Fast retrieval is important for plotters to not stay idle, but generally cache can work
+even on HDDs.</p>
+<p>There could be any number of caches in the cluster, but each cache instance belongs to one of
+the controllers. So if multiple controllers are present in the cluster, you’ll want at least one
+cache connected to each as well for optimal performance.</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="cache/index.html" title="mod subspace_farmer::cluster::cache">cache</a></div><div class="desc docblock-short">Farming cluster cache</div></li><li><div class="item-name"><a class="mod" href="controller/index.html" title="mod subspace_farmer::cluster::controller">controller</a></div><div class="desc docblock-short">Farming cluster controller</div></li><li><div class="item-name"><a class="mod" href="farmer/index.html" title="mod subspace_farmer::cluster::farmer">farmer</a></div><div class="desc docblock-short">Farming cluster farmer</div></li><li><div class="item-name"><a class="mod" href="nats_client/index.html" title="mod subspace_farmer::cluster::nats_client">nats_<wbr>client</a></div><div class="desc docblock-short">NATS client</div></li><li><div class="item-name"><a class="mod" href="plotter/index.html" title="mod subspace_farmer::cluster::plotter">plotter</a></div><div class="desc docblock-short">Farming cluster plotter</div></li></ul></section></div></main></body></html>

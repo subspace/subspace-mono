@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ClusterPlotterId"],"fn":["plotter_service"],"struct":["ClusterPlotter"],"type":["HandlerFn3"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CreateObjectMappings"],"fn":["create_subspace_archiver","decode_block","encode_block","recreate_genesis_segment"],"struct":["ArchivedSegmentNotification","ObjectMappingNotification","SegmentHeadersStore"]};

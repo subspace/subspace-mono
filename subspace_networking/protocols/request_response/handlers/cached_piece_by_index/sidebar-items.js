@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PieceResult"],"struct":["CachedPieceByIndexRequest","CachedPieceByIndexResponse","ClosestPeers"],"type":["CachedPieceByIndexRequestHandler"]};
