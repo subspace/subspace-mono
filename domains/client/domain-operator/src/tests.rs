@@ -87,12 +87,14 @@ fn number_of(consensus_node: &MockConsensusNode, block_hash: Hash) -> u32 {
 
 /// Generate a self-contained EVM domain extrinsic, which can be passed to
 /// `runtime_api().check_extrinsics_and_do_pre_dispatch()`.
+#[allow(dead_code)]
 pub fn generate_eth_domain_sc_extrinsic(tx: EthereumTransaction) -> EvmUncheckedExtrinsic {
     let call = pallet_ethereum::Call::<TestRuntime>::transact { transaction: tx };
     fp_self_contained::UncheckedExtrinsic::new(RuntimeCall::Ethereum(call), None).unwrap()
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
 pub enum EvmTestCall {
     Create,
     Create2,
@@ -102,6 +104,7 @@ pub enum EvmTestCall {
 /// Generate a pallet-evm call, which can be passed to `construct_and_send_extrinsic_with()`.
 /// `use_create` determines whether to use `create`, `create2`, or a non-create call.
 /// `recursion_depth` determines the number of `pallet_utility::Call` wrappers to use.
+#[allow(dead_code)]
 pub fn generate_evm_domain_call(
     account_info: AccountInfo,
     nonce: Option<U256>,
