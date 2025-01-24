@@ -4,9 +4,10 @@ use domain_test_service::evm_domain_test_runtime::{
     Runtime as TestRuntime, RuntimeCall, Signature, UncheckedExtrinsic as EvmUncheckedExtrinsic,
 };
 use domain_test_service::EcdsaKeyring::{Alice, Charlie};
+use domain_test_service::EvmDomainNode;
 use domain_test_service::Sr25519Keyring::Ferdie;
-use domain_test_service::{construct_extrinsic_raw_payload, EvmDomainNode};
 use ethereum::TransactionV2 as EthereumTransaction;
+use evm_domain_test_runtime::construct_extrinsic_raw_payload;
 use fp_rpc::EthereumRuntimeRPCApi;
 use rand::distributions::{Distribution, Uniform};
 use sc_client_api::{HeaderBackend, StorageProof};
@@ -127,8 +128,20 @@ async fn benchmark_bundle_with_evm_tx(
                     value: other_accounts_balance,
                 }
                 .into();
-                let (raw_payload, extra) =
-                    construct_extrinsic_raw_payload(&alice.client, function.clone(), false, 0, 1);
+
+                let current_block_hash = alice.client.as_ref().info().best_hash;
+                let current_block = alice.client.as_ref().info().best_number;
+                let genesis_block_hash = alice.client.as_ref().hash(0).unwrap().unwrap();
+
+                let (raw_payload, extra) = construct_extrinsic_raw_payload(
+                    current_block_hash,
+                    current_block,
+                    genesis_block_hash,
+                    function.clone(),
+                    false,
+                    0,
+                    1,
+                );
                 let signature = raw_payload.using_encoded(|e| {
                     let msg = keccak_256(e);
                     ecdsa_key.sign_prehashed(&msg)

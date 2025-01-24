@@ -126,8 +126,20 @@ where
 }
 
 /// Reject contract creation, unless the account is in the current evm contract allow list.
-#[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
+#[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 pub struct CheckContractCreation<Runtime>(PhantomData<Runtime>);
+
+impl<Runtime> CheckContractCreation<Runtime> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<Runtime> Default for CheckContractCreation<Runtime> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 // Unsigned calls can't create contracts. Only pallet-evm and pallet-ethereum can create contracts.
 // For pallet-evm all contracts are signed extrinsics, for pallet-ethereum there is only one

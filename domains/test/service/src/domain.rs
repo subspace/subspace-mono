@@ -15,7 +15,7 @@ use domain_service::providers::DefaultProvider;
 use domain_service::FullClient;
 use domain_test_primitives::{EvmOnchainStateApi, OnchainStateApi};
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::pallet_prelude::{BlockNumberFor, RuntimeCallFor};
 use pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi;
 use sc_client_api::HeaderBackend;
 use sc_domains::RuntimeExecutor;
@@ -399,7 +399,7 @@ where
     where
         Runtime:
             frame_system::Config<Hash = H256> + pallet_transaction_payment::Config + Send + Sync,
-        Runtime::RuntimeCall:
+        RuntimeCallFor<Runtime>:
             Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + Send + Sync,
         BalanceOf<Runtime>: Send + Sync + From<u64> + sp_runtime::FixedPointOperand,
     {

@@ -11843,6 +11843,7 @@ dependencies = [
  "domain-runtime-primitives",
  "domain-test-service",
  "ethereum",
+ "evm-domain-test-runtime",
  "fp-rpc",
  "fp-self-contained",
  "frame-support",

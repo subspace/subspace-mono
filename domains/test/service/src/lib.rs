@@ -22,9 +22,11 @@ pub mod chain_spec;
 pub mod domain;
 pub mod keyring;
 
+pub use domain::*;
 use domain_runtime_primitives::opaque::Block;
+pub use evm_domain_test_runtime;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::pallet_prelude::{BlockNumberFor, RuntimeCallFor};
 pub use keyring::Keyring as EcdsaKeyring;
 use sc_network::config::{NonReservedPeerMode, TransportConfig};
 use sc_network::multiaddr;
@@ -49,9 +51,6 @@ use sp_runtime::generic::SignedPayload;
 use sp_runtime::traits::Dispatchable;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
-
-pub use domain::*;
-pub use evm_domain_test_runtime;
 
 /// The domain id of the evm domain
 pub const EVM_DOMAIN_ID: DomainId = DomainId::new(0u32);
@@ -185,17 +184,17 @@ type BalanceOf<T> = <<T as pallet_transaction_payment::Config>::OnChargeTransact
 
 pub fn construct_extrinsic_raw_payload<Runtime, Client>(
     client: impl AsRef<Client>,
-    function: <Runtime as frame_system::Config>::RuntimeCall,
+    function: RuntimeCallFor<Runtime>,
     immortal: bool,
     nonce: u32,
     tip: BalanceOf<Runtime>,
 ) -> (
-    SignedPayload<<Runtime as frame_system::Config>::RuntimeCall, SignedExtraFor<Runtime>>,
+    SignedPayload<RuntimeCallFor<Runtime>, SignedExtraFor<Runtime>>,
     SignedExtraFor<Runtime>,
 )
 where
     Runtime: frame_system::Config<Hash = H256> + pallet_transaction_payment::Config + Send + Sync,
-    Runtime::RuntimeCall:
+    RuntimeCallFor<Runtime>:
         Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + Send + Sync,
     BalanceOf<Runtime>: Send + Sync + From<u64> + sp_runtime::FixedPointOperand,
     u64: From<BlockNumberFor<Runtime>>,
@@ -223,10 +222,7 @@ where
         pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
     );
     (
-        generic::SignedPayload::<
-            <Runtime as frame_system::Config>::RuntimeCall,
-            SignedExtraFor<Runtime>,
-        >::from_raw(
+        generic::SignedPayload::<RuntimeCallFor<Runtime>, SignedExtraFor<Runtime>>::from_raw(
             function,
             extra.clone(),
             ((), 1, 0, genesis_block, current_block_hash, (), (), ()),
