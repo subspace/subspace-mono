@@ -7,7 +7,10 @@ use sc_service::{ChainSpec, ChainType};
 use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, Pair, Public};
 use sp_domains::storage::RawGenesis;
-use sp_domains::{OperatorAllowList, OperatorPublicKey, PermissionedActionAllowedBy, RuntimeType};
+use sp_domains::{
+    DomainRuntimeConfig, OperatorAllowList, OperatorPublicKey, PermissionedActionAllowedBy,
+    RuntimeType,
+};
 use sp_runtime::traits::{Convert, IdentifyAccount};
 use sp_runtime::{BuildStorage, MultiSigner, Percent};
 use std::marker::PhantomData;
@@ -140,6 +143,7 @@ struct GenesisDomainParams {
     raw_genesis_storage: Vec<u8>,
     initial_balances: Vec<(MultiAccountId, Balance)>,
     permissioned_action_allowed_by: PermissionedActionAllowedBy<AccountId>,
+    domain_runtime_config: DomainRuntimeConfig,
 }
 
 pub fn dev_config() -> Result<GenericChainSpec, String> {
@@ -191,6 +195,7 @@ pub fn dev_config() -> Result<GenericChainSpec, String> {
                     raw_genesis_storage: raw_genesis_storage.clone(),
                     initial_balances: endowed_accounts(),
                     permissioned_action_allowed_by: PermissionedActionAllowedBy::Anyone,
+                    domain_runtime_config: DomainRuntimeConfig::default_evm(),
                 },
             ))
             .map_err(|error| format!("Failed to serialize genesis config: {error}"))?,
@@ -260,6 +265,7 @@ fn subspace_genesis_config(
                 nomination_tax: Percent::from_percent(5),
                 minimum_nominator_stake: 100 * SSC,
                 initial_balances: genesis_domain_params.initial_balances,
+                domain_runtime_config: genesis_domain_params.domain_runtime_config,
             }],
         },
     }

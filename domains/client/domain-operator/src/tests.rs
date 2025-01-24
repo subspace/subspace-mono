@@ -8,11 +8,15 @@ use codec::{Decode, Encode};
 use cross_domain_message_gossip::get_channel_state;
 use domain_runtime_primitives::{AccountId20Converter, AccountIdConverter, Hash};
 use domain_test_primitives::{OnchainStateApi, TimestampApi};
-use domain_test_service::evm_domain_test_runtime::{Header, UncheckedExtrinsic};
+use domain_test_service::evm_domain_test_runtime::{
+    Header, Runtime as TestRuntime, RuntimeCall, UncheckedExtrinsic as EvmUncheckedExtrinsic,
+};
 use domain_test_service::EcdsaKeyring::{Alice, Bob, Charlie, Eve};
 use domain_test_service::Sr25519Keyring::{self, Alice as Sr25519Alice, Ferdie};
 use domain_test_service::{construct_extrinsic_generic, AUTO_ID_DOMAIN_ID, EVM_DOMAIN_ID};
+use ethereum::TransactionV2 as EthereumTransaction;
 use futures::StreamExt;
+use hex_literal::hex;
 use pallet_domains::OperatorConfig;
 use pallet_messenger::ChainAllowlistUpdate;
 use sc_client_api::{Backend, BlockBackend, BlockchainEvents, HeaderBackend};
@@ -26,13 +30,14 @@ use sp_api::{ProvideRuntimeApi, StorageProof};
 use sp_consensus::SyncOracle;
 use sp_core::storage::StateVersion;
 use sp_core::traits::{FetchRuntimeCode, SpawnEssentialNamed};
-use sp_core::{Pair, H256};
+use sp_core::{Pair, H256, U256};
 use sp_domain_digests::AsPredigest;
 use sp_domains::core_api::DomainCoreApi;
 use sp_domains::merkle_tree::MerkleTree;
+use sp_domains::test_ethereum::{max_extrinsic_gas, AccountInfo};
 use sp_domains::{
     Bundle, BundleValidity, ChainId, ChannelId, DomainsApi, HeaderHashingFor, InboxedBundle,
-    InvalidBundleType, Transfers,
+    InvalidBundleType, PermissionedActionAllowedBy, Transfers,
 };
 use sp_domains_fraud_proof::fraud_proof::{
     ApplyExtrinsicMismatch, ExecutionPhase, FinalizeBlockMismatch, FraudProofVariant,
@@ -45,7 +50,7 @@ use sp_messenger::MessengerApi;
 use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafProof as MmrProof};
 use sp_runtime::generic::{BlockId, DigestItem};
 use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Convert, Hash as HashT, Header as HeaderT, Zero,
+    BlakeTwo256, Block as BlockT, Convert, Extrinsic, Hash as HashT, Header as HeaderT, Zero,
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidityError,
@@ -75,6 +80,94 @@ fn number_of(consensus_node: &MockConsensusNode, block_hash: Hash) -> u32 {
         .number(block_hash)
         .unwrap_or_else(|err| panic!("Failed to fetch number for {block_hash}: {err}"))
         .unwrap_or_else(|| panic!("header {block_hash} not in the chain"))
+}
+
+// These functions depend on the macro-constructed `TestRuntime::RuntimeCall` enum, so they can't
+// be shared via `sp_domains::test_ethereum`.
+
+/// Generate a self-contained EVM domain extrinsic, which can be passed to
+/// `runtime_api().check_extrinsics_and_do_pre_dispatch()`.
+#[allow(dead_code)]
+pub fn generate_eth_domain_sc_extrinsic(tx: EthereumTransaction) -> EvmUncheckedExtrinsic {
+    let call = pallet_ethereum::Call::<TestRuntime>::transact { transaction: tx };
+    fp_self_contained::UncheckedExtrinsic::new(RuntimeCall::Ethereum(call), None).unwrap()
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
+pub enum EvmTestCall {
+    Create,
+    Create2,
+    NotCreate,
+}
+
+/// Generate a pallet-evm call, which can be passed to `construct_and_send_extrinsic_with()`.
+/// `use_create` determines whether to use `create`, `create2`, or a non-create call.
+/// `recursion_depth` determines the number of `pallet_utility::Call` wrappers to use.
+#[allow(dead_code)]
+pub fn generate_evm_domain_call(
+    account_info: AccountInfo,
+    nonce: Option<U256>,
+    init: Vec<u8>,
+    max_fee_per_gas: U256,
+    use_create: EvmTestCall,
+    recursion_depth: u8,
+) -> <TestRuntime as frame_system::Config>::RuntimeCall {
+    if recursion_depth > 0 {
+        let inner_call = generate_evm_domain_call(
+            account_info,
+            nonce,
+            init.clone(),
+            max_fee_per_gas,
+            use_create,
+            recursion_depth - 1,
+        );
+
+        // TODO:
+        // - randomly choose from the 6 different utility wrapper calls
+        // - test this call as the second call in a batch
+        // - test __Ignore calls are ignored
+        return RuntimeCall::Utility(pallet_utility::Call::<TestRuntime>::batch {
+            calls: vec![inner_call],
+        });
+    }
+
+    let call = match use_create {
+        EvmTestCall::Create => pallet_evm::Call::<TestRuntime>::create {
+            source: account_info.address,
+            init,
+            value: U256::zero(),
+            gas_limit: max_extrinsic_gas::<TestRuntime>(1000),
+            max_fee_per_gas,
+            access_list: vec![],
+            max_priority_fee_per_gas: Some(U256::from(1)),
+            nonce,
+        },
+        EvmTestCall::Create2 => pallet_evm::Call::<TestRuntime>::create2 {
+            source: account_info.address,
+            init,
+            salt: H256::zero(),
+            value: U256::zero(),
+            gas_limit: max_extrinsic_gas::<TestRuntime>(1000),
+            max_fee_per_gas,
+            access_list: vec![],
+            max_priority_fee_per_gas: Some(U256::from(1)),
+            nonce,
+        },
+        EvmTestCall::NotCreate => pallet_evm::Call::<TestRuntime>::call {
+            source: account_info.address,
+            target: account_info.address,
+            input: init,
+            value: U256::zero(),
+            gas_limit: max_extrinsic_gas::<TestRuntime>(1000),
+            max_fee_per_gas,
+            max_priority_fee_per_gas: Some(U256::from(1)),
+            nonce,
+            access_list: vec![],
+        },
+    };
+
+    RuntimeCall::EVM(call)
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -3393,7 +3486,7 @@ async fn set_new_code_should_work() {
             .unwrap()
             .into_iter()
             .map(|encoded_extrinsic| {
-                UncheckedExtrinsic::decode(&mut encoded_extrinsic.encode().as_slice()).unwrap()
+                EvmUncheckedExtrinsic::decode(&mut encoded_extrinsic.encode().as_slice()).unwrap()
             })
             .collect::<Vec<_>>();
         panic!("`set_code` not executed, extrinsics in the block: {extrinsics:?}")
@@ -3797,6 +3890,143 @@ async fn test_domain_sudo_calls() {
         alice
             .get_open_channel_for_chain(ChainId::Consensus)
             .is_some()
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // check initial contract allow list
+    assert!(
+        alice.evm_contract_creation_allowed_by() == Some(PermissionedActionAllowedBy::Anyone),
+        "initial contract allow list should be anyone"
+    );
+
+    // set EVM contract allow list on Domain using domain sudo.
+    // Sudo on consensus chain will send a sudo call to domain
+    // once the call is executed in the domain, list will be updated.
+
+    // Start with a redundant set to make sure the test framework works.
+    let mut allow_list = PermissionedActionAllowedBy::Anyone;
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // Then use actual settings
+    allow_list = PermissionedActionAllowedBy::Accounts(vec![]);
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // 1 account in the allow list
+    allow_list = PermissionedActionAllowedBy::Accounts(vec![hex!(
+        "5102030405060708091011121314151617181920"
+    )
+    .into()]);
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
+    })
+    .await
+    .unwrap();
+
+    produce_blocks!(ferdie, alice, 20).await.unwrap();
+
+    // Multiple accounts in the allow list
+    allow_list = PermissionedActionAllowedBy::Accounts(vec![
+        hex!("6102030405060708091011121314151617181920").into(),
+        hex!("7102030405060708091011121314151617181920").into(),
+        hex!("8102030405060708091011121314151617181920").into(),
+    ]);
+    let sudo_unsigned_extrinsic = alice
+        .construct_unsigned_extrinsic(evm_domain_test_runtime::RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::set_contract_creation_allowed_by {
+                contract_creation_allowed_by: allow_list.clone(),
+            },
+        ))
+        .encode();
+    ferdie
+        .construct_and_send_extrinsic_with(pallet_sudo::Call::sudo {
+            call: Box::new(subspace_test_runtime::RuntimeCall::Domains(
+                pallet_domains::Call::send_domain_sudo_call {
+                    domain_id: EVM_DOMAIN_ID,
+                    call: sudo_unsigned_extrinsic,
+                },
+            )),
+        })
+        .await
+        .expect("Failed to construct and send consensus chain to update EVM contract allow list");
+
+    // Wait until list is updated
+    produce_blocks_until!(ferdie, alice, {
+        alice.evm_contract_creation_allowed_by().as_ref() == Some(&allow_list)
     })
     .await
     .unwrap();

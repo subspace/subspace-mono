@@ -26,8 +26,8 @@ use scale_info::TypeInfo;
 use sp_core::Get;
 use sp_domains::{
     calculate_max_bundle_weight_and_size, derive_domain_block_hash, DomainBundleLimit, DomainId,
-    DomainSudoCall, DomainsDigestItem, DomainsTransfersTracker, OnDomainInstantiated,
-    OperatorAllowList, RuntimeId, RuntimeType,
+    DomainRuntimeConfig, DomainSudoCall, DomainsDigestItem, DomainsTransfersTracker,
+    OnDomainInstantiated, OperatorAllowList, RuntimeId, RuntimeType,
 };
 use sp_runtime::traits::{CheckedAdd, Zero};
 use sp_runtime::DigestItem;
@@ -56,6 +56,7 @@ pub enum Error {
     DuplicateInitialAccounts,
     FailedToGenerateRawGenesis(crate::runtime_registry::Error),
     BundleLimitCalculationOverflow,
+    InvalidConfigForRuntimeType,
 }
 
 #[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq)]
@@ -71,10 +72,12 @@ pub struct DomainConfig<AccountId: Ord, Balance> {
     /// The probability of successful bundle in a slot (active slots coefficient). This defines the
     /// expected bundle production rate, must be `> 0` and `≤ 1`.
     pub bundle_slot_probability: (u64, u64),
-    /// Allowed operators to operate for this domain.
+    /// Accounts allowed to operate on this domain.
     pub operator_allow_list: OperatorAllowList<AccountId>,
-    // Initial balances for Domain.
+    // Initial balances for this domain.
     pub initial_balances: Vec<(MultiAccountId, Balance)>,
+    /// Configurations for a specific type of domain runtime, for example, EVM.
+    pub domain_runtime_config: DomainRuntimeConfig,
 }
 
 /// Parameters of the `instantiate_domain` call, it is similar to `DomainConfig` except the `max_bundle_size/weight`
@@ -90,6 +93,7 @@ pub struct DomainConfigParams<AccountId: Ord, Balance> {
     pub bundle_slot_probability: (u64, u64),
     pub operator_allow_list: OperatorAllowList<AccountId>,
     pub initial_balances: Vec<(MultiAccountId, Balance)>,
+    pub domain_runtime_config: DomainRuntimeConfig,
 }
 
 pub fn into_domain_config<T: Config>(
@@ -102,6 +106,7 @@ pub fn into_domain_config<T: Config>(
         bundle_slot_probability,
         operator_allow_list,
         initial_balances,
+        domain_runtime_config,
     } = domain_config_params;
 
     let DomainBundleLimit {
@@ -126,6 +131,7 @@ pub fn into_domain_config<T: Config>(
         bundle_slot_probability,
         operator_allow_list,
         initial_balances,
+        domain_runtime_config,
     })
 }
 
@@ -251,16 +257,26 @@ pub(crate) fn do_instantiate_domain<T: Config>(
         runtime_object
     });
 
-    let domain_runtime_info = match runtime_obj.runtime_type {
-        RuntimeType::Evm => {
+    let domain_runtime_info = match (
+        runtime_obj.runtime_type,
+        &domain_config.domain_runtime_config,
+    ) {
+        (RuntimeType::Evm, DomainRuntimeConfig::Evm(domain_runtime_config)) => {
             let evm_chain_id = NextEVMChainId::<T>::get();
             let next_evm_chain_id = evm_chain_id.checked_add(1).ok_or(Error::MaxEVMChainId)?;
             NextEVMChainId::<T>::set(next_evm_chain_id);
-            DomainRuntimeInfo::EVM {
+
+            DomainRuntimeInfo::Evm {
                 chain_id: evm_chain_id,
+                domain_runtime_config: domain_runtime_config.clone(),
             }
         }
-        RuntimeType::AutoId => DomainRuntimeInfo::AutoId,
+        (RuntimeType::AutoId, DomainRuntimeConfig::AutoId(domain_runtime_config)) => {
+            DomainRuntimeInfo::AutoId {
+                domain_runtime_config: domain_runtime_config.clone(),
+            }
+        }
+        _ => return Err(Error::InvalidConfigForRuntimeType),
     };
 
     // burn total issuance on domain from owners account and track the domain balance
@@ -285,7 +301,7 @@ pub(crate) fn do_instantiate_domain<T: Config>(
         let raw_genesis = into_complete_raw_genesis::<T>(
             runtime_obj,
             domain_id,
-            domain_runtime_info,
+            &domain_runtime_info,
             total_issuance,
             domain_config.initial_balances.clone(),
         )
@@ -375,7 +391,7 @@ mod tests {
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_domains::storage::RawGenesis;
-    use sp_domains::RuntimeObject;
+    use sp_domains::{EvmDomainRuntimeConfig, PermissionedActionAllowedBy, RuntimeObject};
     use sp_runtime::traits::Convert;
     use sp_std::vec;
     use sp_version::RuntimeVersion;
@@ -398,6 +414,7 @@ mod tests {
             bundle_slot_probability: (0, 0),
             operator_allow_list: OperatorAllowList::Anyone,
             initial_balances: Default::default(),
+            domain_runtime_config: Default::default(),
         };
 
         let mut ext = new_test_ext();
@@ -555,6 +572,7 @@ mod tests {
             bundle_slot_probability: (1, 1),
             operator_allow_list: OperatorAllowList::Anyone,
             initial_balances: vec![(MultiAccountId::Raw(vec![0, 1, 2, 3, 4, 5]), 1_000_000 * SSC)],
+            domain_runtime_config: Default::default(),
         };
 
         let mut ext = new_test_ext();
@@ -705,6 +723,204 @@ mod tests {
             assert_eq!(
                 domain_obj.domain_config,
                 into_domain_config::<Test>(domain_config_params).unwrap()
+            );
+        });
+    }
+
+    #[test]
+    fn test_domain_instantiation_evm_contract_allow_list() {
+        let creator = 1u128;
+        let created_at = 0u64;
+        // Construct a valid default domain config
+        let mut domain_config_params = DomainConfigParams {
+            domain_name: "evm-domain".to_owned(),
+            runtime_id: 0,
+            maybe_bundle_limit: None,
+            bundle_slot_probability: (1, 1),
+            operator_allow_list: OperatorAllowList::Anyone,
+            initial_balances: vec![(
+                AccountId20Converter::convert(AccountId20::from(hex!(
+                    "f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac"
+                ))),
+                1_000_000 * SSC,
+            )],
+            domain_runtime_config: Default::default(),
+        };
+
+        let mut ext = new_test_ext();
+        ext.execute_with(|| {
+            assert_eq!(NextDomainId::<Test>::get(), 0.into());
+            // Register runtime id
+            RuntimeRegistry::<Test>::insert(
+                domain_config_params.runtime_id,
+                RuntimeObject {
+                    runtime_name: "evm".to_owned(),
+                    runtime_type: Default::default(),
+                    runtime_upgrades: 0,
+                    hash: Default::default(),
+                    raw_genesis: RawGenesis::dummy(vec![1, 2, 3, 4]),
+                    version: RuntimeVersion {
+                        spec_name: "test".into(),
+                        spec_version: 1,
+                        impl_version: 1,
+                        transaction_version: 1,
+                        ..Default::default()
+                    },
+                    created_at: Default::default(),
+                    updated_at: Default::default(),
+                    instance_count: 0,
+                },
+            );
+
+            // Set enough fund to creator
+            Balances::make_free_balance_be(
+                &creator,
+                <Test as Config>::DomainInstantiationDeposit::get()
+                    // for domain total issuance
+                    + 1_000_000 * SSC
+                    + <Test as pallet_balances::Config>::ExistentialDeposit::get(),
+            );
+
+            // should be successful
+            let domain_id =
+                do_instantiate_domain::<Test>(domain_config_params.clone(), creator, created_at)
+                    .unwrap();
+            let domain_obj = DomainRegistry::<Test>::get(domain_id).unwrap();
+
+            assert_eq!(domain_obj.owner_account_id, creator);
+            assert_eq!(domain_obj.created_at, created_at);
+            assert_eq!(
+                domain_obj.domain_config,
+                into_domain_config::<Test>(domain_config_params.clone()).unwrap()
+            );
+            assert_eq!(
+                domain_obj
+                    .domain_config
+                    .domain_runtime_config
+                    .initial_contract_creation_allow_list(),
+                Some(&PermissionedActionAllowedBy::Anyone),
+                "anyone should be allowed to create contracts by default"
+            );
+
+            // Set empty list
+            let mut list = vec![];
+            domain_config_params.domain_runtime_config = EvmDomainRuntimeConfig {
+                initial_contract_creation_allow_list: PermissionedActionAllowedBy::Accounts(
+                    list.clone(),
+                ),
+            }
+            .into();
+
+            // Set enough fund to creator
+            Balances::make_free_balance_be(
+                &creator,
+                <Test as Config>::DomainInstantiationDeposit::get()
+                    // for domain total issuance
+                    + 1_000_000 * SSC
+                    + <Test as pallet_balances::Config>::ExistentialDeposit::get(),
+            );
+
+            // should be successful
+            let domain_id =
+                do_instantiate_domain::<Test>(domain_config_params.clone(), creator, created_at)
+                    .unwrap();
+            let domain_obj = DomainRegistry::<Test>::get(domain_id).unwrap();
+
+            assert_eq!(domain_obj.owner_account_id, creator);
+            assert_eq!(domain_obj.created_at, created_at);
+            assert_eq!(
+                domain_obj.domain_config,
+                into_domain_config::<Test>(domain_config_params.clone()).unwrap()
+            );
+            assert_eq!(
+                domain_obj
+                    .domain_config
+                    .domain_runtime_config
+                    .initial_contract_creation_allow_list(),
+                Some(&PermissionedActionAllowedBy::Accounts(list)),
+                "empty list should work"
+            );
+
+            // Set 1 account in list
+            list = vec![hex!("0102030405060708091011121314151617181920").into()];
+            domain_config_params.domain_runtime_config = EvmDomainRuntimeConfig {
+                initial_contract_creation_allow_list: PermissionedActionAllowedBy::Accounts(
+                    list.clone(),
+                ),
+            }
+            .into();
+
+            // Set enough fund to creator
+            Balances::make_free_balance_be(
+                &creator,
+                <Test as Config>::DomainInstantiationDeposit::get()
+                    // for domain total issuance
+                    + 1_000_000 * SSC
+                    + <Test as pallet_balances::Config>::ExistentialDeposit::get(),
+            );
+
+            // should be successful
+            let domain_id =
+                do_instantiate_domain::<Test>(domain_config_params.clone(), creator, created_at)
+                    .unwrap();
+            let domain_obj = DomainRegistry::<Test>::get(domain_id).unwrap();
+
+            assert_eq!(domain_obj.owner_account_id, creator);
+            assert_eq!(domain_obj.created_at, created_at);
+            assert_eq!(
+                domain_obj.domain_config,
+                into_domain_config::<Test>(domain_config_params.clone()).unwrap()
+            );
+            assert_eq!(
+                domain_obj
+                    .domain_config
+                    .domain_runtime_config
+                    .initial_contract_creation_allow_list(),
+                Some(&PermissionedActionAllowedBy::Accounts(list)),
+                "1 account list should work"
+            );
+
+            // Set multi account list
+            list = vec![
+                hex!("0102030405060708091011121314151617181920").into(),
+                hex!("1102030405060708091011121314151617181920").into(),
+                hex!("2102030405060708091011121314151617181920").into(),
+            ];
+            domain_config_params.domain_runtime_config = EvmDomainRuntimeConfig {
+                initial_contract_creation_allow_list: PermissionedActionAllowedBy::Accounts(
+                    list.clone(),
+                ),
+            }
+            .into();
+
+            // Set enough fund to creator
+            Balances::make_free_balance_be(
+                &creator,
+                <Test as Config>::DomainInstantiationDeposit::get()
+                    // for domain total issuance
+                    + 1_000_000 * SSC
+                    + <Test as pallet_balances::Config>::ExistentialDeposit::get(),
+            );
+
+            // should be successful
+            let domain_id =
+                do_instantiate_domain::<Test>(domain_config_params.clone(), creator, created_at)
+                    .unwrap();
+            let domain_obj = DomainRegistry::<Test>::get(domain_id).unwrap();
+
+            assert_eq!(domain_obj.owner_account_id, creator);
+            assert_eq!(domain_obj.created_at, created_at);
+            assert_eq!(
+                domain_obj.domain_config,
+                into_domain_config::<Test>(domain_config_params.clone()).unwrap()
+            );
+            assert_eq!(
+                domain_obj
+                    .domain_config
+                    .domain_runtime_config
+                    .initial_contract_creation_allow_list(),
+                Some(&PermissionedActionAllowedBy::Accounts(list)),
+                "multi account list should work"
             );
         });
     }

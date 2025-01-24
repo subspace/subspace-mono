@@ -20,7 +20,10 @@ use scale_info::TypeInfo;
 use sp_core::crypto::AccountId32;
 use sp_core::Hasher;
 use sp_domains::storage::{RawGenesis, StorageData, StorageKey};
-use sp_domains::{DomainId, DomainsDigestItem, RuntimeId, RuntimeObject, RuntimeType};
+use sp_domains::{
+    AutoIdDomainRuntimeConfig, DomainId, DomainsDigestItem, EvmDomainRuntimeConfig, RuntimeId,
+    RuntimeObject, RuntimeType,
+};
 use sp_runtime::traits::{CheckedAdd, Get, Zero};
 use sp_runtime::DigestItem;
 use sp_std::vec;
@@ -42,15 +45,26 @@ pub enum Error {
 }
 
 /// Domain runtime specific information to create domain raw genesis.
-#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Copy)]
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq)]
 pub enum DomainRuntimeInfo {
-    EVM { chain_id: EVMChainId },
-    AutoId,
+    Evm {
+        /// The dynamic EVM chain id for this domain.
+        chain_id: EVMChainId,
+        /// The EVM-specific domain runtime config.
+        domain_runtime_config: EvmDomainRuntimeConfig,
+    },
+    AutoId {
+        /// The AutoId-specific domain runtime config.
+        domain_runtime_config: AutoIdDomainRuntimeConfig,
+    },
 }
 
 impl Default for DomainRuntimeInfo {
     fn default() -> Self {
-        Self::EVM { chain_id: 0 }
+        Self::Evm {
+            chain_id: 0,
+            domain_runtime_config: EvmDomainRuntimeConfig::default(),
+        }
     }
 }
 
@@ -93,7 +107,7 @@ fn derive_initial_balances_storages<T: Config, AccountId: Encode>(
 pub fn into_complete_raw_genesis<T: Config>(
     runtime_obj: RuntimeObject<BlockNumberFor<T>, T::Hash>,
     domain_id: DomainId,
-    domain_runtime_info: DomainRuntimeInfo,
+    domain_runtime_info: &DomainRuntimeInfo,
     total_issuance: BalanceOf<T>,
     initial_balances: Vec<(MultiAccountId, BalanceOf<T>)>,
 ) -> Result<RawGenesis, Error> {
@@ -102,8 +116,15 @@ pub fn into_complete_raw_genesis<T: Config>(
     } = runtime_obj;
     raw_genesis.set_domain_id(domain_id);
     match domain_runtime_info {
-        DomainRuntimeInfo::EVM { chain_id } => {
-            raw_genesis.set_evm_chain_id(chain_id);
+        DomainRuntimeInfo::Evm {
+            chain_id,
+            domain_runtime_config,
+        } => {
+            raw_genesis.set_evm_chain_id(*chain_id);
+            raw_genesis.set_evm_contract_creation_allowed_by(
+                &domain_runtime_config.initial_contract_creation_allow_list,
+            );
+
             let initial_balances = initial_balances.into_iter().try_fold(
                 Vec::<(AccountId20, BalanceOf<T>)>::new(),
                 |mut balances, (account_id, balance)| {
@@ -122,7 +143,9 @@ pub fn into_complete_raw_genesis<T: Config>(
                 initial_balances,
             ));
         }
-        DomainRuntimeInfo::AutoId => {
+        DomainRuntimeInfo::AutoId {
+            domain_runtime_config: AutoIdDomainRuntimeConfig {},
+        } => {
             let initial_balances = initial_balances.into_iter().try_fold(
                 Vec::<(AccountId32, BalanceOf<T>)>::new(),
                 |mut balances, (account_id, balance)| {

@@ -19,13 +19,13 @@ use core::mem;
 use domain_runtime_primitives::opaque::Header;
 pub use domain_runtime_primitives::{
     block_weights, maximum_block_length, maximum_domain_block_weight, opaque, Balance, BlockNumber,
-    Hash, Nonce, EXISTENTIAL_DEPOSIT,
+    EthereumAccountId as AccountId, EthereumSignature as Signature, Hash, Nonce,
+    EXISTENTIAL_DEPOSIT,
 };
 use domain_runtime_primitives::{
     CheckExtrinsicsValidityError, DecodeExtrinsicError, HoldIdentifier, ERR_BALANCE_OVERFLOW,
-    ERR_NONCE_OVERFLOW, SLOT_DURATION,
+    ERR_CONTRACT_CREATION_NOT_ALLOWED, ERR_NONCE_OVERFLOW, SLOT_DURATION,
 };
-use fp_account::EthereumSignature;
 use fp_self_contained::{CheckedSignature, SelfContainedCall};
 use frame_support::dispatch::{DispatchClass, DispatchInfo, GetDispatchInfo};
 use frame_support::genesis_builder_helper::{build_state, get_preset};
@@ -41,14 +41,15 @@ use frame_support::weights::{ConstantMultiplier, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::limits::{BlockLength, BlockWeights};
 use pallet_block_fees::fees::OnChargeDomainTransaction;
-use pallet_ethereum::Call::transact;
 use pallet_ethereum::{
-    Call, PostLogContent, Transaction as EthereumTransaction, TransactionData, TransactionStatus,
+    PostLogContent, Transaction as EthereumTransaction, TransactionData, TransactionStatus,
 };
 use pallet_evm::{
     Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
     IdentityAddressMapping, Runner,
 };
+use pallet_evm_tracker::create_contract::{is_create_contract_allowed, CheckContractCreation};
+use pallet_evm_tracker::traits::{MaybeIntoEthCall, MaybeIntoEvmCall};
 use pallet_transporter::EndpointHandler;
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
@@ -63,9 +64,9 @@ use sp_messenger_host_functions::{get_storage_key, StorageKeyRequest};
 use sp_mmr_primitives::EncodableOpaqueLeaf;
 use sp_runtime::generic::Era;
 use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-    IdentityLookup, Keccak256, NumberFor, One, PostDispatchInfoOf, SignedExtension,
-    UniqueSaturatedInto, ValidateUnsigned, Verify, Zero,
+    BlakeTwo256, Block as BlockT, Checkable, DispatchInfoOf, Dispatchable, IdentityLookup,
+    Keccak256, NumberFor, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto,
+    ValidateUnsigned, Zero,
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
@@ -84,17 +85,11 @@ use sp_subspace_mmr::domain_mmr_runtime_interface::{
 };
 use sp_subspace_mmr::{ConsensusChainMmrLeafProof, MmrLeaf};
 use sp_version::RuntimeVersion;
+use subspace_runtime_primitives::utility::MaybeIntoUtilityCall;
 use subspace_runtime_primitives::{
     BlockNumber as ConsensusBlockNumber, Hash as ConsensusBlockHash, Moment,
     SlowAdjustingFeeUpdate, SHANNON, SSC,
 };
-
-/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
-pub type Signature = EthereumSignature;
-
-/// Some way of identifying an account on the chain. We intentionally make it equivalent
-/// to the public key of our transaction signing scheme.
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 /// The address format for describing accounts.
 pub type Address = AccountId;
@@ -121,6 +116,7 @@ pub type SignedExtra = (
     frame_system::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    CheckContractCreation<Runtime>,
 );
 
 /// Custom signed extra for check_and_pre_dispatch.
@@ -131,9 +127,10 @@ type CustomSignedExtra = (
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,
     frame_system::CheckMortality<Runtime>,
-    pallet_evm_nonce_tracker::CheckNonce<Runtime>,
+    pallet_evm_tracker::CheckNonce<Runtime>,
     domain_check_weight::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    CheckContractCreation<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -175,6 +172,15 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         dispatch_info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Option<TransactionValidity> {
+        if !is_create_contract_allowed::<Runtime>(self, &(*info).into()) {
+            return Some(Err(InvalidTransaction::Custom(
+                ERR_CONTRACT_CREATION_NOT_ALLOWED,
+            )
+            .into()));
+        }
+
+        // TODO: move this code into pallet-block-fees, so it can be used from the production and
+        // test runtimes.
         match self {
             RuntimeCall::Ethereum(call) => {
                 // Ensure the caller can pay for the consensus chain storage fee
@@ -199,6 +205,15 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
         dispatch_info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Option<Result<(), TransactionValidityError>> {
+        if !is_create_contract_allowed::<Runtime>(self, &(*info).into()) {
+            return Some(Err(InvalidTransaction::Custom(
+                ERR_CONTRACT_CREATION_NOT_ALLOWED,
+            )
+            .into()));
+        }
+
+        // TODO: move this code into pallet-block-fees, so it can be used from the production and
+        // test runtimes.
         match self {
             RuntimeCall::Ethereum(call) => {
                 // Withdraw the consensus chain storage fee from the caller and record
@@ -685,7 +700,17 @@ impl pallet_evm::Config for Runtime {
     type WeightInfo = pallet_evm::weights::SubstrateWeight<Self>;
 }
 
-impl pallet_evm_nonce_tracker::Config for Runtime {}
+impl MaybeIntoEvmCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_evm::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_evm_call(&self) -> Option<&pallet_evm::Call<Runtime>> {
+        match self {
+            RuntimeCall::EVM(call) => Some(call),
+            _ => None,
+        }
+    }
+}
+
+impl pallet_evm_tracker::Config for Runtime {}
 
 parameter_types! {
     pub const PostOnlyBlockHash: PostLogContent = PostLogContent::OnlyBlockHash;
@@ -696,6 +721,16 @@ impl pallet_ethereum::Config for Runtime {
     type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
     type PostLogContent = PostOnlyBlockHash;
     type ExtraDataLength = ConstU32<30>;
+}
+
+impl MaybeIntoEthCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_ethereum::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_eth_call(&self) -> Option<&pallet_ethereum::Call<Runtime>> {
+        match self {
+            RuntimeCall::Ethereum(call) => Some(call),
+            _ => None,
+        }
+    }
 }
 
 parameter_types! {
@@ -755,6 +790,16 @@ impl pallet_utility::Config for Runtime {
     type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
+impl MaybeIntoUtilityCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_utility::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_utility_call(&self) -> Option<&pallet_utility::Call<Runtime>> {
+        match self {
+            RuntimeCall::Utility(call) => Some(call),
+            _ => None,
+        }
+    }
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 //
 // NOTE: Currently domain runtime does not naturally support the pallets with inherent extrinsics.
@@ -783,7 +828,7 @@ construct_runtime!(
         EVM: pallet_evm = 81,
         EVMChainId: pallet_evm_chain_id = 82,
         BaseFee: pallet_base_fee = 83,
-        EVMNoncetracker: pallet_evm_nonce_tracker = 84,
+        EVMNoncetracker: pallet_evm_tracker = 84,
 
         // domain instance stuff
         SelfDomainId: pallet_domain_id = 90,
@@ -946,7 +991,7 @@ fn pre_dispatch_evm_transaction(
             {
                 let _ = transaction_validity?;
 
-                let Call::transact { transaction } = call;
+                let pallet_ethereum::Call::transact { transaction } = call;
                 domain_check_weight::CheckWeight::<Runtime>::do_pre_dispatch(dispatch_info, len)?;
 
                 let transaction_data: TransactionData = (&transaction).into();
@@ -1006,9 +1051,10 @@ fn check_transaction_and_do_pre_dispatch_inner(
                 extra.2,
                 extra.3,
                 extra.4,
-                pallet_evm_nonce_tracker::CheckNonce::from(extra.5 .0),
+                pallet_evm_tracker::CheckNonce::from(extra.5 .0),
                 extra.6,
                 extra.7,
+                extra.8,
             );
 
             custom_extra
@@ -1526,7 +1572,7 @@ impl_runtime_apis! {
             xts: Vec<<Block as BlockT>::Extrinsic>,
         ) -> Vec<EthereumTransaction> {
             xts.into_iter().filter_map(|xt| match xt.0.function {
-                RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
+                RuntimeCall::Ethereum(pallet_ethereum::Call::transact {  transaction }) => Some(transaction),
                 _ => None
             }).collect::<Vec<EthereumTransaction>>()
         }
@@ -1560,7 +1606,7 @@ impl_runtime_apis! {
     impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
         fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
             UncheckedExtrinsic::new_unsigned(
-                pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+                pallet_ethereum::Call::transact { transaction }.into(),
             )
         }
     }

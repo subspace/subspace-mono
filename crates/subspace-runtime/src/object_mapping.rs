@@ -1,3 +1,6 @@
+//! Object mapping extraction code.
+//! This code must be kept in sync with `test/subspace-test-runtime/src/lib.rs`.
+
 use crate::{Block, Runtime, RuntimeCall};
 use codec::{Compact, CompactLen, Encode};
 use sp_std::prelude::*;
@@ -6,6 +9,11 @@ use subspace_core_primitives::objects::{BlockObject, BlockObjectMapping};
 
 const MAX_OBJECT_MAPPING_RECURSION_DEPTH: u16 = 5;
 
+/// Extract the nested object mappings from `call`.
+// TODO:
+// - add start and end nesting closures to nested_utility_call_iter(), so we can modify and restore
+//   the base offset
+// - convert this code to use nested_utility_call_iter(), and remove the recursion depth limit
 pub(crate) fn extract_utility_block_object_mapping(
     mut base_offset: u32,
     objects: &mut Vec<BlockObject>,
@@ -67,6 +75,7 @@ pub(crate) fn extract_utility_block_object_mapping(
     }
 }
 
+/// Extract the object mappings from `call`.
 pub(crate) fn extract_call_block_object_mapping(
     mut base_offset: u32,
     objects: &mut Vec<BlockObject>,
@@ -102,6 +111,7 @@ pub(crate) fn extract_call_block_object_mapping(
     }
 }
 
+/// Extract the object mappings from `block`.
 pub(crate) fn extract_block_object_mapping(block: Block) -> BlockObjectMapping {
     let mut block_object_mapping = BlockObjectMapping::default();
     let mut base_offset =

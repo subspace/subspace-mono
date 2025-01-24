@@ -98,6 +98,7 @@ use subspace_core_primitives::solutions::{
     pieces_to_solution_range, solution_range_to_pieces, SolutionRange,
 };
 use subspace_core_primitives::{PublicKey, Randomness, SlotNumber, U256};
+use subspace_runtime_primitives::utility::MaybeIntoUtilityCall;
 use subspace_runtime_primitives::{
     maximum_normal_block_length, AccountId, Balance, BlockNumber, FindBlockRewardAddress, Hash,
     HoldIdentifier, Moment, Nonce, Signature, SlowAdjustingFeeUpdate, BLOCK_WEIGHT_FOR_2_SEC,
@@ -120,7 +121,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("subspace"),
     impl_name: Cow::Borrowed("subspace"),
     authoring_version: 0,
-    spec_version: 2,
+    // TODO: before deploying the next runtime version to mainnet or taurus, bump this version
+    spec_version: 11,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 0,
@@ -400,6 +402,16 @@ impl pallet_utility::Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type PalletsOrigin = OriginCaller;
     type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
+impl MaybeIntoUtilityCall<Runtime> for RuntimeCall {
+    /// If this call is a `pallet_utility::Call<Runtime>` call, returns the inner call.
+    fn maybe_into_utility_call(&self) -> Option<&pallet_utility::Call<Runtime>> {
+        match self {
+            RuntimeCall::Utility(call) => Some(call),
+            _ => None,
+        }
+    }
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -962,6 +974,8 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
+    // TODO: remove once migration has been deployed to Taurus
+    pallet_domains::migration_v2_to_v3::VersionCheckedMigrateDomainsV2ToV3<Runtime>,
 >;
 
 fn extract_segment_headers(ext: &UncheckedExtrinsic) -> Option<Vec<SegmentHeader>> {

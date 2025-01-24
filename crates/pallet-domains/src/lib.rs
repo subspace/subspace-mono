@@ -12,6 +12,7 @@ mod tests;
 pub mod block_tree;
 mod bundle_storage_fund;
 pub mod domain_registry;
+pub mod migration_v2_to_v3;
 pub mod runtime_registry;
 mod staking;
 mod staking_epoch;
@@ -146,7 +147,7 @@ pub type BlockTreeNodeFor<T> = crate::block_tree::BlockTreeNode<
 >;
 
 /// The current storage version.
-const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
 /// The number of bundle of a particular domain to be included in the block is probabilistic
 /// and based on the consensus chain slot probability and domain bundle slot probability, usually
@@ -1297,7 +1298,7 @@ mod pallet {
             let block_number = frame_system::Pallet::<T>::current_block_number();
             let runtime_id = do_register_runtime::<T>(
                 runtime_name,
-                runtime_type.clone(),
+                runtime_type,
                 raw_genesis_storage,
                 block_number,
             )
@@ -1810,6 +1811,7 @@ mod pallet {
                         bundle_slot_probability: genesis_domain.bundle_slot_probability,
                         operator_allow_list: genesis_domain.operator_allow_list,
                         initial_balances: genesis_domain.initial_balances,
+                        domain_runtime_config: genesis_domain.domain_runtime_config,
                     };
                     let domain_owner = genesis_domain.owner_account_id;
                     let domain_id = do_instantiate_domain::<T>(
@@ -2096,12 +2098,12 @@ impl<T: Config> Pallet<T> {
     ) -> Option<(DomainInstanceData, BlockNumberFor<T>)> {
         let domain_obj = DomainRegistry::<T>::get(domain_id)?;
         let runtime_object = RuntimeRegistry::<T>::get(domain_obj.domain_config.runtime_id)?;
-        let runtime_type = runtime_object.runtime_type.clone();
+        let runtime_type = runtime_object.runtime_type;
         let total_issuance = domain_obj.domain_config.total_issuance()?;
         let raw_genesis = into_complete_raw_genesis::<T>(
             runtime_object,
             domain_id,
-            domain_obj.domain_runtime_info,
+            &domain_obj.domain_runtime_info,
             total_issuance,
             domain_obj.domain_config.initial_balances,
         )

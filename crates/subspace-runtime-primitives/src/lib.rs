@@ -2,6 +2,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod utility;
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 

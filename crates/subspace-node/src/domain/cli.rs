@@ -16,7 +16,9 @@ use sc_service::{BasePath, Configuration, DatabaseSource};
 use sp_blockchain::HeaderBackend;
 use sp_domain_digests::AsPredigest;
 use sp_domains::storage::RawGenesis;
-use sp_domains::{DomainId, OperatorAllowList, OperatorId, OperatorPublicKey, RuntimeType};
+use sp_domains::{
+    DomainId, DomainRuntimeConfig, OperatorAllowList, OperatorId, OperatorPublicKey, RuntimeType,
+};
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Header;
 use sp_runtime::DigestItem;
@@ -462,6 +464,7 @@ pub struct GenesisDomain {
     pub initial_balances: Vec<(MultiAccountId, Balance)>,
     pub operator_allow_list: OperatorAllowList<AccountId>,
     pub operator_signing_key: OperatorPublicKey,
+    pub domain_runtime_config: DomainRuntimeConfig,
 }
 
 /// Genesis Operator list params

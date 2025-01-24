@@ -54,19 +54,27 @@ auto-id-domain-test-runtime = { version = "0.1.0", path = "../../test/runtime/au
 cross-domain-message-gossip = { path = "../../client/cross-domain-message-gossip" }
 domain-test-service = { version = "0.1.0", path = "../../test/service" }
 domain-test-primitives = { version = "0.1.0", path = "../../test/primitives" }
+ethereum = "0.15.0"
 evm-domain-test-runtime = { version = "0.1.0", path = "../../test/runtime/evm" }
+fp-self-contained = { version = "1.0.0-dev", git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 frame-system = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
+hex-literal = "0.4.1"
 pallet-balances = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 pallet-domains = { version = "0.1.0", path = "../../../crates/pallet-domains" }
 pallet-domain-sudo = { version = "0.1.0", path = "../../pallets/domain-sudo" }
+pallet-ethereum = { git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
+pallet-evm = { version = "6.0.0-dev", git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
+pallet-evm-tracker = { version = "0.1.0", path = "../../pallets/evm-tracker" }
 pallet-messenger = { version = "0.1.0", path = "../../../domains/pallets/messenger" }
 pallet-sudo = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 pallet-timestamp = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 pallet-transporter = { version = "0.1.0", path = "../../../domains/pallets/transporter" }
+pallet-utility = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 rand = "0.8.5"
 sc-cli = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", default-features = false }
 sc-service = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", default-features = false }
 sc-transaction-pool = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
+sp-domains = { version = "0.1.0", default-features = false, features = ["test-ethereum"], path = "../../../crates/sp-domains" }
 sp-state-machine = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 subspace-core-primitives = { version = "0.1.0", default-features = false, path = "../../../crates/subspace-core-primitives" }
 subspace-test-runtime = { version = "0.1.0", path = "../../../test/subspace-test-runtime" }

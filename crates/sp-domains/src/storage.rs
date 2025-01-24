@@ -1,10 +1,13 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::{evm_chain_id_storage_key, self_domain_id_storage_key, DomainId};
+use crate::{
+    evm_chain_id_storage_key, evm_contract_creation_allowed_by_storage_key,
+    self_domain_id_storage_key, DomainId, PermissionedActionAllowedBy,
+};
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use domain_runtime_primitives::EVMChainId;
+use domain_runtime_primitives::{EVMChainId, EthereumAccountId};
 use hash_db::Hasher;
 use parity_scale_codec::{Codec, Decode, Encode};
 use scale_info::TypeInfo;
@@ -59,6 +62,16 @@ impl RawGenesis {
         let _ = self
             .top
             .insert(evm_chain_id_storage_key(), StorageData(chain_id.encode()));
+    }
+
+    pub fn set_evm_contract_creation_allowed_by(
+        &mut self,
+        contract_creation_allowed_by: &PermissionedActionAllowedBy<EthereumAccountId>,
+    ) {
+        let _ = self.top.insert(
+            evm_contract_creation_allowed_by_storage_key(),
+            StorageData(contract_creation_allowed_by.encode()),
+        );
     }
 
     pub fn set_top_storages(&mut self, storages: Vec<(StorageKey, StorageData)>) {

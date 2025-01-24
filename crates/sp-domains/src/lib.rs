@@ -8,6 +8,10 @@ pub mod extrinsics;
 pub mod merkle_tree;
 pub mod proof_provider_and_verifier;
 pub mod storage;
+#[cfg(any(test, feature = "test-ethereum"))]
+pub mod test_ethereum;
+#[cfg(any(test, feature = "test-ethereum"))]
+pub mod test_ethereum_tx;
 #[cfg(test)]
 mod tests;
 pub mod valued_trie;
@@ -26,7 +30,7 @@ use bundle_producer_election::{BundleProducerElectionParams, ProofOfElectionErro
 use core::num::ParseIntError;
 use core::ops::{Add, Sub};
 use core::str::FromStr;
-use domain_runtime_primitives::MultiAccountId;
+use domain_runtime_primitives::{EthereumAccountId, MultiAccountId};
 use frame_support::storage::storage_prefix;
 use frame_support::{Blake2_128Concat, StorageHasher};
 use hexlit::hex;
@@ -866,7 +870,7 @@ impl<AccountId: Ord> OperatorAllowList<AccountId> {
 }
 
 /// Permissioned actions allowed by either specific accounts or anyone.
-#[derive(TypeInfo, Encode, Decode, Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PermissionedActionAllowedBy<AccountId: Codec + Clone> {
     Accounts(Vec<AccountId>),
     Anyone,
@@ -877,6 +881,98 @@ impl<AccountId: Codec + PartialEq + Clone> PermissionedActionAllowedBy<AccountId
         match self {
             PermissionedActionAllowedBy::Accounts(accounts) => accounts.contains(who),
             PermissionedActionAllowedBy::Anyone => true,
+        }
+    }
+
+    pub fn is_anyone_allowed(&self) -> bool {
+        matches!(self, PermissionedActionAllowedBy::Anyone)
+    }
+}
+
+/// EVM-specific domain runtime config.
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EvmDomainRuntimeConfig {
+    /// Accounts initially allowed to create contracts on an EVM domain.
+    /// The domain owner can update this list using a sudo call.
+    pub initial_contract_creation_allow_list: PermissionedActionAllowedBy<EthereumAccountId>,
+}
+
+impl Default for EvmDomainRuntimeConfig {
+    fn default() -> Self {
+        EvmDomainRuntimeConfig {
+            initial_contract_creation_allow_list: PermissionedActionAllowedBy::Anyone,
+        }
+    }
+}
+
+/// AutoId-specific domain runtime config.
+#[derive(
+    TypeInfo, Debug, Default, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize,
+)]
+pub struct AutoIdDomainRuntimeConfig {
+    // Currently, there is no specific configuration for AutoId.
+}
+
+/// Configrations for specific domain runtime kinds.
+#[derive(TypeInfo, Debug, Encode, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DomainRuntimeConfig {
+    Evm(EvmDomainRuntimeConfig),
+    AutoId(AutoIdDomainRuntimeConfig),
+}
+
+impl Default for DomainRuntimeConfig {
+    fn default() -> Self {
+        Self::default_evm()
+    }
+}
+
+impl From<EvmDomainRuntimeConfig> for DomainRuntimeConfig {
+    fn from(evm_config: EvmDomainRuntimeConfig) -> Self {
+        DomainRuntimeConfig::Evm(evm_config)
+    }
+}
+
+impl From<AutoIdDomainRuntimeConfig> for DomainRuntimeConfig {
+    fn from(auto_id_config: AutoIdDomainRuntimeConfig) -> Self {
+        DomainRuntimeConfig::AutoId(auto_id_config)
+    }
+}
+
+impl DomainRuntimeConfig {
+    pub fn default_evm() -> Self {
+        DomainRuntimeConfig::Evm(EvmDomainRuntimeConfig::default())
+    }
+
+    pub fn default_auto_id() -> Self {
+        DomainRuntimeConfig::AutoId(AutoIdDomainRuntimeConfig::default())
+    }
+
+    pub fn is_evm(&self) -> bool {
+        matches!(self, DomainRuntimeConfig::Evm(_))
+    }
+
+    pub fn is_auto_id(&self) -> bool {
+        matches!(self, DomainRuntimeConfig::AutoId(_))
+    }
+
+    pub fn evm(&self) -> Option<&EvmDomainRuntimeConfig> {
+        match self {
+            DomainRuntimeConfig::Evm(evm_config) => Some(evm_config),
+            _ => None,
+        }
+    }
+
+    pub fn initial_contract_creation_allow_list(
+        &self,
+    ) -> Option<&PermissionedActionAllowedBy<EthereumAccountId>> {
+        self.evm()
+            .map(|evm_config| &evm_config.initial_contract_creation_allow_list)
+    }
+
+    pub fn auto_id(&self) -> Option<&AutoIdDomainRuntimeConfig> {
+        match self {
+            DomainRuntimeConfig::AutoId(auto_id_config) => Some(auto_id_config),
+            _ => None,
         }
     }
 }
@@ -894,6 +990,8 @@ pub struct GenesisDomain<AccountId: Ord, Balance> {
     pub domain_name: String,
     pub bundle_slot_probability: (u64, u64),
     pub operator_allow_list: OperatorAllowList<AccountId>,
+    /// Configurations for a specific type of domain runtime, for example, EVM.
+    pub domain_runtime_config: DomainRuntimeConfig,
 
     // Genesis operator
     pub signing_key: OperatorPublicKey,
@@ -906,7 +1004,7 @@ pub struct GenesisDomain<AccountId: Ord, Balance> {
 
 /// Types of runtime pallet domains currently supports
 #[derive(
-    Debug, Default, Encode, Decode, TypeInfo, Clone, PartialEq, Eq, Serialize, Deserialize,
+    Debug, Default, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, Serialize, Deserialize,
 )]
 pub enum RuntimeType {
     #[default]
@@ -968,35 +1066,54 @@ impl DomainsDigestItem for DigestItem {
 
 /// EVM chain Id storage key.
 ///
-/// This and next function should ideally use Host function to fetch the storage key
+/// This function should ideally use a Host function to fetch the storage key
 /// from the domain runtime. But since the Host function is not available at Genesis, we have to
 /// assume the storage keys.
 /// TODO: once the chain is launched in mainnet, we should use the Host function for all domain instances.
 pub(crate) fn evm_chain_id_storage_key() -> StorageKey {
     StorageKey(
         storage_prefix(
-            // This is the name used for the `pallet_evm_chain_id` in the `construct_runtime` macro
+            // This is the name used for `pallet_evm_chain_id` in the `construct_runtime` macro
             // i.e. `EVMChainId: pallet_evm_chain_id = 82,`
             "EVMChainId".as_bytes(),
-            // This is the storage item name used inside the `pallet_evm_chain_id`
+            // This is the storage item name used inside `pallet_evm_chain_id`
             "ChainId".as_bytes(),
         )
         .to_vec(),
     )
 }
 
-/// Total issuance storage for Domains.
+/// EVM contract creation allow list storage key.
 ///
-/// This function should ideally use Host function to fetch the storage key
+/// This function should ideally use a Host function to fetch the storage key
+/// from the domain runtime. But since the Host function is not available at Genesis, we have to
+/// assume the storage keys.
+/// TODO: once the chain is launched in mainnet, we should use the Host function for all domain instances.
+pub(crate) fn evm_contract_creation_allowed_by_storage_key() -> StorageKey {
+    StorageKey(
+        storage_prefix(
+            // This is the name used for `pallet_evm_tracker` in the `construct_runtime` macro
+            // i.e. `EVMNoncetracker: pallet_evm_tracker = 84,`
+            "EVMNoncetracker".as_bytes(),
+            // This is the storage item name used inside `pallet_evm_tracker`
+            "ContractCreationAllowedBy".as_bytes(),
+        )
+        .to_vec(),
+    )
+}
+
+/// Total issuance storage key for Domains.
+///
+/// This function should ideally use a Host function to fetch the storage key
 /// from the domain runtime. But since the Host function is not available at Genesis, we have to
 /// assume the storage keys.
 /// TODO: once the chain is launched in mainnet, we should use the Host function for all domain instances.
 pub fn domain_total_issuance_storage_key() -> StorageKey {
     StorageKey(
         storage_prefix(
-            // This is the name used for the `pallet_balances` in the `construct_runtime` macro
+            // This is the name used for `pallet_balances` in the `construct_runtime` macro
             "Balances".as_bytes(),
-            // This is the storage item name used inside the `pallet_balances`
+            // This is the storage item name used inside `pallet_balances`
             "TotalIssuance".as_bytes(),
         )
         .to_vec(),
@@ -1005,7 +1122,7 @@ pub fn domain_total_issuance_storage_key() -> StorageKey {
 
 /// Account info on frame_system on Domains
 ///
-/// This function should ideally use Host function to fetch the storage key
+/// This function should ideally use a Host function to fetch the storage key
 /// from the domain runtime. But since the Host function is not available at Genesis, we have to
 /// assume the storage keys.
 /// TODO: once the chain is launched in mainnet, we should use the Host function for all domain instances.
@@ -1021,17 +1138,17 @@ pub fn domain_account_storage_key<AccountId: Encode>(who: AccountId) -> StorageK
     StorageKey(final_key)
 }
 
-/// The storage key of the `SelfDomainId` storage item in the `pallet-domain-id`
+/// The storage key of the `SelfDomainId` storage item in `pallet-domain-id`
 ///
-/// Any change to the storage item name or the `pallet-domain-id` name used in the `construct_runtime`
+/// Any change to the storage item name or `pallet-domain-id` name used in the `construct_runtime`
 /// macro must be reflected here.
 pub fn self_domain_id_storage_key() -> StorageKey {
     StorageKey(
         frame_support::storage::storage_prefix(
-            // This is the name used for the `pallet-domain-id` in the `construct_runtime` macro
+            // This is the name used for `pallet-domain-id` in the `construct_runtime` macro
             // i.e. `SelfDomainId: pallet_domain_id = 90`
             "SelfDomainId".as_bytes(),
-            // This is the storage item name used inside the `pallet-domain-id`
+            // This is the storage item name used inside `pallet-domain-id`
             "SelfDomainId".as_bytes(),
         )
         .to_vec(),
@@ -1552,7 +1669,7 @@ sp_api::decl_runtime_apis! {
 
         /// Returns the last confirmed domain block execution receipt.
         fn last_confirmed_domain_block_receipt(domain_id: DomainId) ->Option<ExecutionReceiptFor<DomainHeader, Block, Balance>>;
-}
+    }
 
     pub trait BundleProducerElectionApi<Balance: Encode + Decode> {
         fn bundle_producer_election_params(domain_id: DomainId) -> Option<BundleProducerElectionParams<Balance>>;

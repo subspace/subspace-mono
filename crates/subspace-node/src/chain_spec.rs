@@ -409,6 +409,7 @@ fn subspace_genesis_config(
                     nomination_tax: Percent::from_percent(5),
                     minimum_nominator_stake: 100 * SSC,
                     initial_balances: genesis_domain.initial_balances,
+                    domain_runtime_config: genesis_domain.domain_runtime_config,
                 }
             })
             .collect()

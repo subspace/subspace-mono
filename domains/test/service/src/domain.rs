@@ -10,12 +10,12 @@ use cross_domain_message_gossip::ChainMsg;
 use domain_client_operator::snap_sync::ConsensusChainSyncParams;
 use domain_client_operator::{fetch_domain_bootstrap_info, BootstrapResult, OperatorStreams};
 use domain_runtime_primitives::opaque::Block;
-use domain_runtime_primitives::Balance;
+use domain_runtime_primitives::{Balance, EthereumAccountId};
 use domain_service::providers::DefaultProvider;
 use domain_service::FullClient;
-use domain_test_primitives::OnchainStateApi;
+use domain_test_primitives::{EvmOnchainStateApi, OnchainStateApi};
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::pallet_prelude::{BlockNumberFor, RuntimeCallFor};
 use pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi;
 use sc_client_api::HeaderBackend;
 use sc_domains::RuntimeExecutor;
@@ -31,7 +31,7 @@ use sp_block_builder::BlockBuilder;
 use sp_consensus_subspace::SubspaceApi;
 use sp_core::{Encode, H256};
 use sp_domains::core_api::DomainCoreApi;
-use sp_domains::{DomainId, OperatorId};
+use sp_domains::{DomainId, OperatorId, PermissionedActionAllowedBy};
 use sp_messenger::messages::{ChainId, ChannelId};
 use sp_messenger::{MessengerApi, RelayerApi};
 use sp_offchain::OffchainWorkerApi;
@@ -399,12 +399,44 @@ where
     where
         Runtime:
             frame_system::Config<Hash = H256> + pallet_transaction_payment::Config + Send + Sync,
-        Runtime::RuntimeCall:
+        RuntimeCallFor<Runtime>:
             Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + Send + Sync,
         BalanceOf<Runtime>: Send + Sync + From<u64> + sp_runtime::FixedPointOperand,
     {
         let function = function.into();
         UncheckedExtrinsicFor::<Runtime>::new_unsigned(function)
+    }
+}
+
+impl<Runtime, RuntimeApi> DomainNode<Runtime, RuntimeApi>
+where
+    Runtime: frame_system::Config<Hash = H256>
+        + pallet_transaction_payment::Config
+        + DomainRuntime
+        + Send
+        + Sync,
+    RuntimeApi: ConstructRuntimeApi<Block, Client<RuntimeApi>> + Send + Sync + 'static,
+    RuntimeApi::RuntimeApi: Metadata<Block>
+        + BlockBuilder<Block>
+        + OffchainWorkerApi<Block>
+        + SessionKeys<Block>
+        + DomainCoreApi<Block>
+        + TaggedTransactionQueue<Block>
+        + AccountNonceApi<Block, <Runtime as DomainRuntime>::AccountId, Nonce>
+        + TransactionPaymentRuntimeApi<Block, Balance>
+        + MessengerApi<Block, NumberFor<CBlock>, <CBlock as BlockT>::Hash>
+        + RelayerApi<Block, NumberFor<Block>, NumberFor<CBlock>, <CBlock as BlockT>::Hash>
+        + EvmOnchainStateApi<Block>,
+{
+    /// Returns the current EVM contract creation allow list.
+    /// Returns `None` if this is not an EVM domain, or if the allow list isn't set (allow all).
+    pub fn evm_contract_creation_allowed_by(
+        &self,
+    ) -> Option<PermissionedActionAllowedBy<EthereumAccountId>> {
+        self.client
+            .runtime_api()
+            .evm_contract_creation_allowed_by(self.client.info().best_hash)
+            .expect("Failed to get EVM contact creation allow list")
     }
 }
 
@@ -463,7 +495,7 @@ impl DomainNodeBuilder {
         self
     }
 
-    /// Build a evm domain node
+    /// Build an EVM domain node
     pub async fn build_evm_node(
         self,
         role: Role,
@@ -485,7 +517,7 @@ impl DomainNodeBuilder {
         .await
     }
 
-    /// Build a evm domain node
+    /// Build an Auto ID domain node
     pub async fn build_auto_id_node(
         self,
         role: Role,

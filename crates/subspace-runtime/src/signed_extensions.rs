@@ -6,8 +6,9 @@ use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
 };
 use sp_std::prelude::*;
+use subspace_runtime_primitives::utility::nested_utility_call_iter;
 
-/// Disable specific pallets.
+/// Disable balance transfers, if configured in the runtime.
 #[derive(Debug, Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
 pub struct DisablePallets;
 
@@ -62,23 +63,17 @@ impl SignedExtension for DisablePallets {
 }
 
 fn contains_balance_transfer(call: &RuntimeCall) -> bool {
-    match call {
-        RuntimeCall::Balances(
+    for call in nested_utility_call_iter::<Runtime>(call) {
+        // Other calls are inconclusive, they might contain nested calls
+        if let RuntimeCall::Balances(
             pallet_balances::Call::transfer_allow_death { .. }
             | pallet_balances::Call::transfer_keep_alive { .. }
             | pallet_balances::Call::transfer_all { .. },
-        ) => true,
-        RuntimeCall::Utility(utility_call) => match utility_call {
-            pallet_utility::Call::batch { calls }
-            | pallet_utility::Call::batch_all { calls }
-            | pallet_utility::Call::force_batch { calls } => {
-                calls.iter().any(contains_balance_transfer)
-            }
-            pallet_utility::Call::as_derivative { call, .. }
-            | pallet_utility::Call::dispatch_as { call, .. }
-            | pallet_utility::Call::with_weight { call, .. } => contains_balance_transfer(call),
-            pallet_utility::Call::__Ignore(..) => false,
-        },
-        _ => false,
+        ) = call
+        {
+            return true;
+        }
     }
+
+    false
 }

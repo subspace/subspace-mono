@@ -540,6 +540,7 @@ mod benchmarks {
             bundle_slot_probability: (1, 1),
             operator_allow_list: OperatorAllowList::Anyone,
             initial_balances: Default::default(),
+            domain_runtime_config: Default::default(),
         };
 
         assert_ok!(Domains::<T>::set_permissioned_action_allowed_by(
@@ -910,6 +911,7 @@ mod benchmarks {
             bundle_slot_probability: (1, 1),
             operator_allow_list: OperatorAllowList::Anyone,
             initial_balances: Default::default(),
+            domain_runtime_config: Default::default(),
         };
 
         assert_ok!(Domains::<T>::set_permissioned_action_allowed_by(

@@ -9,7 +9,9 @@ use evm_domain_test_runtime::{
 use sc_chain_spec::{ChainType, GenericChainSpec, NoExtension};
 use sp_core::{ecdsa, Pair, Public};
 use sp_domains::storage::RawGenesis;
-use sp_domains::{DomainId, GenesisDomain, OperatorAllowList, OperatorPublicKey, RuntimeType};
+use sp_domains::{
+    DomainId, DomainRuntimeConfig, GenesisDomain, OperatorAllowList, OperatorPublicKey, RuntimeType,
+};
 use sp_runtime::traits::{Convert, IdentifyAccount, Verify};
 use sp_runtime::{BuildStorage, Percent};
 use subspace_runtime_primitives::{AccountId, Balance, SSC};
@@ -132,5 +134,7 @@ pub fn get_genesis_domain(
             .cloned()
             .map(|k| (AccountId20Converter::convert(k), 2_000_000 * SSC))
             .collect(),
+
+        domain_runtime_config: DomainRuntimeConfig::default_evm(),
     })
 }

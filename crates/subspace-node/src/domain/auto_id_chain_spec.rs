@@ -12,7 +12,7 @@ use sc_chain_spec::GenericChainSpec;
 use sc_service::ChainType;
 use sp_core::crypto::{AccountId32, UncheckedFrom};
 use sp_domains::storage::RawGenesis;
-use sp_domains::{OperatorAllowList, OperatorPublicKey, RuntimeType};
+use sp_domains::{DomainRuntimeConfig, OperatorAllowList, OperatorPublicKey, RuntimeType};
 use sp_runtime::traits::Convert;
 use sp_runtime::BuildStorage;
 use std::collections::BTreeSet;
@@ -179,5 +179,6 @@ pub fn get_genesis_domain(
         initial_balances: get_testnet_endowed_accounts_by_spec_id(spec_id),
         operator_allow_list,
         operator_signing_key,
+        domain_runtime_config: DomainRuntimeConfig::default_auto_id(),
     })
 }

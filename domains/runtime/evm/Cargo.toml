@@ -21,7 +21,6 @@ codec = { package = "parity-scale-codec", version = "3.6.12", default-features =
 domain-check-weight = { version = "0.1.0", path = "../../pallets/domain-check-weight", default-features = false }
 domain-pallet-executive = { version = "0.1.0", path = "../../pallets/executive", default-features = false }
 domain-runtime-primitives = { version = "0.1.0", path = "../../primitives/runtime", default-features = false }
-fp-account = { version = "1.0.0-dev", default-features = false, features = ["serde"], git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 fp-rpc = { version = "3.0.0-dev", default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 fp-self-contained = { version = "1.0.0-dev", default-features = false, features = ["serde"], git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 frame-benchmarking = { default-features = false, optional = true, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
@@ -37,7 +36,7 @@ pallet-domain-sudo = { version = "0.1.0", path = "../../pallets/domain-sudo", de
 pallet-ethereum = { default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 pallet-evm = { version = "6.0.0-dev", default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 pallet-evm-chain-id = { version = "1.0.0-dev", default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
-pallet-evm-nonce-tracker = { version = "0.1.0", path = "../../pallets/evm_nonce_tracker", default-features = false }
+pallet-evm-tracker = { version = "0.1.0", path = "../../pallets/evm-tracker", default-features = false }
 pallet-evm-precompile-modexp = { version = "2.0.0-dev", default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 pallet-evm-precompile-sha3fips = { version = "2.0.0-dev", default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
 pallet-evm-precompile-simple = { version = "2.0.0-dev", default-features = false, git = "https://github.com/autonomys/frontier", rev = "f80f9e2bad338f3bf3854b256b3c4edea23e5968" }
@@ -84,7 +83,6 @@ std = [
     "domain-check-weight/std",
     "domain-pallet-executive/std",
     "domain-runtime-primitives/std",
-    "fp-account/std",
     "fp-rpc/std",
     "fp-self-contained/std",
     "frame-benchmarking?/std",
@@ -99,7 +97,7 @@ std = [
     "pallet-ethereum/std",
     "pallet-evm/std",
     "pallet-evm-chain-id/std",
-    "pallet-evm-nonce-tracker/std",
+    "pallet-evm-tracker/std",
     "pallet-evm-precompile-modexp/std",
     "pallet-evm-precompile-sha3fips/std",
     "pallet-evm-precompile-simple/std",

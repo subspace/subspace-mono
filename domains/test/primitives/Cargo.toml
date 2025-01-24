@@ -13,14 +13,18 @@ include = [
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive"] }
+domain-runtime-primitives = { version = "0.1.0", default-features = false, path = "../../../domains/primitives/runtime" }
 sp-api = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", default-features = false }
+sp-domains = { version = "0.1.0", default-features = false, path = "../../../crates/sp-domains" }
 sp-messenger = { version = "0.1.0", default-features = false, path = "../../primitives/messenger" }
 subspace-runtime-primitives = { version = "0.1.0", path = "../../../crates/subspace-runtime-primitives", default-features = false }
 
 [features]
 default = ["std"]
 std = [
+    "domain-runtime-primitives/std",
     "sp-api/std",
+    "sp-domains/std",
     "sp-messenger/std",
     "subspace-runtime-primitives/std",
 ]
