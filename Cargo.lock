@@ -12624,6 +12624,7 @@ dependencies = [
  "subspace-archiving",
  "subspace-core-primitives",
  "subspace-erasure-coding",
+ "subspace-runtime-primitives",
  "thiserror 2.0.0",
  "tokio",
  "tracing",
