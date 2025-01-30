@@ -10,16 +10,12 @@ use crate::commands::rpc::RpcCommandOptions;
 use crate::node_client::RpcNodeClient;
 use crate::piece_getter::DsnPieceGetter;
 use crate::piece_validator::SegmentCommitmentPieceValidator;
-use anyhow::anyhow;
 use async_lock::Semaphore;
 use clap::Parser;
-use std::num::NonZeroUsize;
 use std::panic;
 use std::process::exit;
 use std::sync::Arc;
-use subspace_core_primitives::pieces::Record;
 use subspace_data_retrieval::object_fetcher::ObjectFetcher;
-use subspace_erasure_coding::ErasureCoding;
 use subspace_kzg::Kzg;
 use subspace_networking::utils::piece_provider::PieceProvider;
 use subspace_networking::NodeRunner;
@@ -143,11 +139,6 @@ pub async fn initialize_object_fetcher(
     }
 
     let kzg = Kzg::new();
-    let erasure_coding = ErasureCoding::new(
-        NonZeroUsize::new(Record::NUM_S_BUCKETS.next_power_of_two().ilog2() as usize)
-            .expect("Not zero; qed"),
-    )
-    .map_err(|error| anyhow!("Failed to instantiate erasure coding: {error}"))?;
 
     let out_connections = dsn_options.out_connections;
     // TODO: move this service code into its own function, in a new library part of this crate
@@ -161,7 +152,7 @@ pub async fn initialize_object_fetcher(
         )),
     );
     let piece_getter = DsnPieceGetter::new(piece_provider);
-    let object_fetcher = ObjectFetcher::new(piece_getter.into(), erasure_coding, max_size);
+    let object_fetcher = ObjectFetcher::new(piece_getter.into(), max_size);
 
     Ok((object_fetcher, dsn_node_runner))
 }
