@@ -12621,6 +12621,7 @@ dependencies = [
  "futures",
  "hex",
  "parity-scale-codec",
+ "rand",
  "subspace-archiving",
  "subspace-core-primitives",
  "subspace-erasure-coding",

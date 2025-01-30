@@ -624,10 +624,20 @@ impl Record {
     pub fn to_raw_record_chunks(
         &self,
     ) -> impl Iterator<Item = &'_ [u8; ScalarBytes::SAFE_BYTES]> + '_ {
-        // We have zero byte padding from [`ScalarBytes::SAFE_BYTES`] to [`ScalarBytes::FULL_BYTES`] that we need
-        // to skip
+        // We have zero byte padding from [`ScalarBytes::SAFE_BYTES`] to
+        // [`ScalarBytes::FULL_BYTES`] that we need to skip
         self.iter()
             .map(|bytes| bytes[1..].try_into().expect("Correct length; qed"))
+    }
+
+    /// Convert from a record to mutable raw bytes, assumes dealing with source record that only stores
+    /// safe bytes in its chunks.
+    #[inline]
+    pub fn to_mut_raw_record_chunks(
+        &mut self,
+    ) -> impl Iterator<Item = &'_ mut [u8; ScalarBytes::SAFE_BYTES]> + '_ {
+        self.iter_mut()
+            .map(|bytes| (&mut bytes[1..]).try_into().expect("Correct length; qed"))
     }
 }
 

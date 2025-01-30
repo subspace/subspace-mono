@@ -96,6 +96,28 @@ impl PieceGetter for (PieceIndex, Piece) {
     }
 }
 
+#[async_trait]
+impl PieceGetter for Vec<(PieceIndex, Piece)> {
+    async fn get_piece(&self, piece_index: PieceIndex) -> anyhow::Result<Option<Piece>> {
+        Ok(self.iter().find_map(|(index, piece)| {
+            if *index == piece_index {
+                Some(piece.clone())
+            } else {
+                None
+            }
+        }))
+    }
+
+    async fn get_pieces<'a>(
+        &'a self,
+        piece_indices: Vec<PieceIndex>,
+    ) -> anyhow::Result<
+        Box<dyn Stream<Item = (PieceIndex, anyhow::Result<Option<Piece>>)> + Send + Unpin + 'a>,
+    > {
+        get_pieces_individually(|piece_index| self.get_piece(piece_index), piece_indices)
+    }
+}
+
 /// A default implementation which gets each piece individually, using the `get_piece` async
 /// function.
 ///
