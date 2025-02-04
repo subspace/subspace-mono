@@ -186,8 +186,7 @@ pub struct Operator<Balance, Share, DomainBlockNumber> {
     /// The status of the operator, it may be stale due to the `OperatorStatus::PendingSlash` is
     /// not assigned to this field directly, thus MUST use the `status()` method to query the status
     /// instead.
-    /// TODO: export `partial_status` for migration usage, remove `pub(crate)`once migration are done
-    pub(crate) partial_status: OperatorStatus<DomainBlockNumber>,
+    partial_status: OperatorStatus<DomainBlockNumber>,
     /// Total deposits during the previous epoch
     pub deposits_in_epoch: Balance,
     /// Total withdrew shares during the previous epoch
