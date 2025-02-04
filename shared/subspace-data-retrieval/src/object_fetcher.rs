@@ -447,8 +447,9 @@ where
                 .await?
                 .into_items();
             // Go through the segment until we reach the offset.
-            // Unconditional progress is enum variant + compact encoding of number of elements
-            let mut progress = 1 + Compact::compact_len(&(items.len() as u64));
+            // Unconditional progress is enum variant, always 1 byte in SCALE encoding.
+            // (Segments do not have an item count, to make incremental writing easier.)
+            let mut progress = 1;
             let segment_item = items
                 .into_iter()
                 .find(|item| {
