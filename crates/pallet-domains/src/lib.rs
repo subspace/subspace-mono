@@ -12,6 +12,7 @@ mod tests;
 pub mod block_tree;
 mod bundle_storage_fund;
 pub mod domain_registry;
+pub mod migration_v2_to_v3;
 pub mod runtime_registry;
 mod staking;
 mod staking_epoch;
@@ -146,7 +147,7 @@ pub type BlockTreeNodeFor<T> = crate::block_tree::BlockTreeNode<
 >;
 
 /// The current storage version.
-const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
 /// The number of bundle of a particular domain to be included in the block is probabilistic
 /// and based on the consensus chain slot probability and domain bundle slot probability, usually

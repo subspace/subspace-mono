@@ -121,7 +121,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("subspace"),
     impl_name: Cow::Borrowed("subspace"),
     authoring_version: 0,
-    spec_version: 2,
+    spec_version: 12,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 0,
@@ -978,8 +978,12 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
-    // TODO: remove once migrations are done
-    pallet_messenger::migrations::VersionCheckedMigrateDomainsV0ToV1<Runtime>,
+    (
+        // TODO: remove once migration has been deployed to Taurus and Mainnet
+        pallet_messenger::migrations::VersionCheckedMigrateDomainsV0ToV1<Runtime>,
+        // TODO: remove once migration has been deployed to Taurus
+        pallet_domains::migration_v2_to_v3::VersionCheckedMigrateDomainsV2ToV3<Runtime>,
+    ),
 >;
 
 fn extract_segment_headers(ext: &UncheckedExtrinsic) -> Option<Vec<SegmentHeader>> {
