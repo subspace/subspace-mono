@@ -90,7 +90,7 @@ mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_finalize(_now: BlockNumberFor<T>) {
-            // clear the storage since we would start with updated nonce
+            // clear the nonce storage, since we would start with updated nonce
             // during the pre_dispatch in next block
             let _ = AccountNonce::<T>::clear(u32::MAX, None);
         }
@@ -108,12 +108,12 @@ impl<T: Config> Pallet<T> {
         AccountNonce::<T>::set(account, Some(nonce))
     }
 
-    /// Returns true if the account is allowed to create contracts.
+    /// Returns true if the supplied account is allowed to create contracts.
     pub fn is_allowed_to_create_contracts(signer: &T::AccountId) -> bool {
         ContractCreationAllowedBy::<T>::get().is_allowed(signer)
     }
 
-    /// Returns true if the account is allowed to create contracts.
+    /// Returns true if any account is allowed to create contracts.
     pub fn is_allowed_to_create_unsigned_contracts() -> bool {
         ContractCreationAllowedBy::<T>::get().is_anyone_allowed()
     }
