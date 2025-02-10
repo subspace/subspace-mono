@@ -1,0 +1,33 @@
+##
+# This action runs Snyk container vulnerability
+# scanner for Docker images.
+##
+
+name: Snyk Container
+on:
+  push:
+    branches:
+      - snyk-vulnerability-scan
+
+jobs:
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build Farmer Docker image
+        run: docker build -t autonomys/farmer:snyk -f docker/farmer.Dockerfile .
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: autonomys/farmer:snyk
+          args: --file=docker/farmer.Dockerfile
+        continue-on-error: true
+
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
