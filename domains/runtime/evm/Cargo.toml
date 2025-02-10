@@ -52,6 +52,7 @@ sp-block-builder = { default-features = false, git = "https://github.com/subspac
 sp-core = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 sp-domains = { version = "0.1.0", path = "../../../crates/sp-domains", default-features = false }
 sp-domain-sudo = { version = "0.1.0", path = "../../primitives/domain-sudo", default-features = false }
+sp-evm-tracker = { version = "0.1.0", path = "../../primitives/evm-tracker", default-features = false }
 sp-genesis-builder = { git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305", default-features = false }
 sp-inherents = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 sp-messenger = { version = "0.1.0", default-features = false, path = "../../primitives/messenger" }
@@ -114,6 +115,7 @@ std = [
     "sp-core/std",
     "sp-domains/std",
     "sp-domain-sudo/std",
+    "sp-evm-tracker/std",
     "sp-genesis-builder/std",
     "sp-inherents/std",
     "sp-messenger/std",

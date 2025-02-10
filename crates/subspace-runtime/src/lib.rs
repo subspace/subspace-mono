@@ -1362,6 +1362,11 @@ impl_runtime_apis! {
             Domains::domain_sudo_call(domain_id)
         }
 
+        fn evm_domain_contract_creation_allowed_by_call(domain_id: DomainId) -> Option<Vec<u8>> {
+            Domains::evm_domain_contract_creation_allowed_by_call(domain_id)
+        }
+
+
         fn last_confirmed_domain_block_receipt(domain_id: DomainId) -> Option<ExecutionReceiptFor<DomainHeader, Block, Balance>>{
             Domains::latest_confirmed_domain_execution_receipt(domain_id)
         }

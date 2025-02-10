@@ -9,6 +9,7 @@ use sp_core::Hasher;
 use sp_domain_sudo::DomainSudoApi;
 use sp_domains::core_api::DomainCoreApi;
 use sp_domains::{ChainId, ChannelId, DomainAllowlistUpdates};
+use sp_evm_tracker::EvmTrackerApi;
 use sp_messenger::messages::MessageKey;
 use sp_messenger::{MessengerApi, RelayerApi};
 use sp_runtime::traits::{Block as BlockT, NumberFor};
@@ -107,6 +108,23 @@ where
 }
 
 impl<CBlock, Block, Executor> DomainSudoApi<Block> for StatelessRuntime<CBlock, Block, Executor>
+where
+    CBlock: BlockT,
+    Block: BlockT,
+    NumberFor<Block>: Codec,
+    Executor: CodeExecutor + RuntimeVersionOf,
+{
+    fn __runtime_api_internal_call_api_at(
+        &self,
+        _at: Block::Hash,
+        params: Vec<u8>,
+        fn_name: &dyn Fn(RuntimeVersion) -> &'static str,
+    ) -> Result<Vec<u8>, ApiError> {
+        self.dispatch_call(fn_name, params)
+    }
+}
+
+impl<CBlock, Block, Executor> EvmTrackerApi<Block> for StatelessRuntime<CBlock, Block, Executor>
 where
     CBlock: BlockT,
     Block: BlockT,
@@ -366,6 +384,17 @@ where
 
     pub fn is_valid_sudo_call(&self, extrinsic: Vec<u8>) -> Result<bool, ApiError> {
         <Self as DomainSudoApi<Block>>::is_valid_sudo_call(self, Default::default(), extrinsic)
+    }
+
+    pub fn is_valid_evm_contract_creation_allowed_by_call(
+        &self,
+        extrinsic: Vec<u8>,
+    ) -> Result<bool, ApiError> {
+        <Self as EvmTrackerApi<Block>>::is_valid_evm_contract_creation_allowed_by_call(
+            self,
+            Default::default(),
+            extrinsic,
+        )
     }
 
     pub fn construct_domain_sudo_extrinsic(

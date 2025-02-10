@@ -278,6 +278,10 @@ sp_api::impl_runtime_apis! {
             unreachable!()
         }
 
+        fn evm_domain_contract_creation_allowed_by_call(_domain_id: DomainId) -> Option<Vec<u8>>{
+            unreachable!()
+        }
+
         fn last_confirmed_domain_block_receipt(_domain_id: DomainId) -> Option<ExecutionReceiptFor<DomainHeader, Block, Balance>> {
             unreachable!()
         }

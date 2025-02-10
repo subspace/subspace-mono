@@ -137,6 +137,7 @@ pub enum StatelessDomainRuntimeCall {
     IsInherentExtrinsic(OpaqueExtrinsic),
     IsDecodableExtrinsic(OpaqueExtrinsic),
     IsValidDomainSudoCall(Vec<u8>),
+    IsValidEvmDomainContractCreationAllowedByCall(Vec<u8>),
 }
 
 impl PassBy for StatelessDomainRuntimeCall {

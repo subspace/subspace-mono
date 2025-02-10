@@ -381,6 +381,11 @@ where
                     .is_valid_sudo_call(encoded_extrinsic)
                     .ok()
             }
+            StatelessDomainRuntimeCall::IsValidEvmDomainContractCreationAllowedByCall(
+                encoded_extrinsic,
+            ) => domain_stateless_runtime
+                .is_valid_evm_contract_creation_allowed_by_call(encoded_extrinsic)
+                .ok(),
         }
     }
 

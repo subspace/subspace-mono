@@ -37,9 +37,12 @@ mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_core::U256;
     use sp_domains::PermissionedActionAllowedBy;
+    use sp_evm_tracker::{InherentError, InherentType, IntoEvmTrackerCall, INHERENT_IDENTIFIER};
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {}
+    pub trait Config: frame_system::Config {
+        type IntoEvmTrackerCall: IntoEvmTrackerCall<Call<Self>>;
+    }
 
     /// Storage to hold evm account nonces.
     /// This is only used for pre_dispatch since EVM pre_dispatch does not
@@ -89,6 +92,65 @@ mod pallet {
             ensure_root(origin)?;
             ContractCreationAllowedBy::<T>::put(contract_creation_allowed_by);
             Ok(())
+        }
+
+        /// An inherent call to set ContractCreationAllowedBy.
+        #[pallet::call_index(1)]
+        #[pallet::weight((T::DbWeight::get().reads_writes(1, 1), DispatchClass::Mandatory))]
+        pub fn inherent_set_contract_creation_allowed_by(
+            origin: OriginFor<T>,
+            contract_creation_allowed_by: PermissionedActionAllowedBy<EthereumAccountId>,
+        ) -> DispatchResult {
+            ensure_none(origin)?;
+            ContractCreationAllowedBy::<T>::put(contract_creation_allowed_by);
+            Ok(())
+        }
+    }
+
+    #[pallet::inherent]
+    impl<T: Config> ProvideInherent for Pallet<T> {
+        type Call = Call<T>;
+        type Error = InherentError;
+        const INHERENT_IDENTIFIER: InherentIdentifier = INHERENT_IDENTIFIER;
+
+        fn create_inherent(data: &InherentData) -> Option<Self::Call> {
+            let inherent_data = data
+                .get_data::<InherentType>(&INHERENT_IDENTIFIER)
+                .expect("EVM tracker inherent data not correctly encoded")
+                .expect("EVM tracker inherent data must be provided");
+
+            inherent_data
+                .maybe_call
+                .map(T::IntoEvmTrackerCall::into_evm_tracker_call)
+        }
+
+        fn is_inherent_required(data: &InherentData) -> Result<Option<Self::Error>, Self::Error> {
+            let inherent_data = data
+                .get_data::<InherentType>(&INHERENT_IDENTIFIER)
+                .expect("EVM tracker inherent data not correctly encoded")
+                .expect("EVM tracker inherent data must be provided");
+
+            Ok(inherent_data
+                .maybe_call
+                .map(|_encoded_call| InherentError::MissingRuntimeCall))
+        }
+
+        fn check_inherent(call: &Self::Call, data: &InherentData) -> Result<(), Self::Error> {
+            let maybe_provided_call = Self::create_inherent(data);
+
+            if let Some(provided_call) = maybe_provided_call {
+                if Self::is_inherent(call) && call != &provided_call {
+                    return Err(InherentError::IncorrectRuntimeCall);
+                }
+            } else {
+                return Err(InherentError::MissingRuntimeCall);
+            }
+
+            Ok(())
+        }
+
+        fn is_inherent(call: &Self::Call) -> bool {
+            matches!(call, Call::inherent_set_contract_creation_allowed_by { .. })
         }
     }
 

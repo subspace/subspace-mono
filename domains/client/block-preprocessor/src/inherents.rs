@@ -180,6 +180,7 @@ where
         sp_executive::InherentDataProvider,
         sp_messenger::InherentDataProvider,
         sp_domain_sudo::InherentDataProvider,
+        sp_evm_tracker::InherentDataProvider,
     );
 
     async fn create_inherent_data_providers(
@@ -243,12 +244,26 @@ where
         let domain_sudo_call_inherent_provider =
             sp_domain_sudo::InherentDataProvider::new(maybe_domain_sudo_call);
 
+        let maybe_evm_domain_contract_creation_allowed_by_call = if domains_api_version >= 4 {
+            runtime_api.evm_domain_contract_creation_allowed_by_call(
+                consensus_block_hash,
+                self.domain_id,
+            )?
+        } else {
+            None
+        };
+        let evm_domain_contract_creation_allowed_by_call_inherent_provider =
+            sp_evm_tracker::InherentDataProvider::new(
+                maybe_evm_domain_contract_creation_allowed_by_call,
+            );
+
         Ok((
             timestamp_provider,
             storage_price_provider,
             runtime_upgrade_provider,
             messenger_inherent_provider,
             domain_sudo_call_inherent_provider,
+            evm_domain_contract_creation_allowed_by_call_inherent_provider,
         ))
     }
 }

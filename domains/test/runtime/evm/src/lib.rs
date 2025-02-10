@@ -722,7 +722,22 @@ impl pallet_evm::OnChargeEVMTransaction<Runtime> for EVMCurrencyAdapter {
     }
 }
 
-impl pallet_evm_tracker::Config for Runtime {}
+pub struct IntoEvmTrackerCall;
+
+impl sp_evm_tracker::IntoEvmTrackerCall<pallet_evm_tracker::Call<Runtime>> for IntoEvmTrackerCall {
+    fn into_evm_tracker_call(call: Vec<u8>) -> pallet_evm_tracker::Call<Runtime> {
+        use sp_domain_sudo::IntoRuntimeCall;
+
+        match crate::IntoRuntimeCall::runtime_call(call) {
+            RuntimeCall::EVMNoncetracker(call) => call,
+            _ => unreachable!("must always be a valid pallet-evm-tracker domain extrinsic as checked by consensus chain; qed"),
+        }
+    }
+}
+
+impl pallet_evm_tracker::Config for Runtime {
+    type IntoEvmTrackerCall = IntoEvmTrackerCall;
+}
 
 impl pallet_evm::Config for Runtime {
     type FeeCalculator = BaseFee;
@@ -947,6 +962,21 @@ fn construct_sudo_call_extrinsic(encoded_ext: Vec<u8>) -> <Block as BlockT>::Ext
             call: Box::new(ext.0.function),
         }
         .into(),
+    )
+}
+
+/// Returns `true` if this is a valid pallet-evm-tracker "contract creation allowed by" inherent
+/// call.
+fn is_valid_evm_contract_creation_allowed_by_call(encoded_ext: Vec<u8>) -> bool {
+    let Ok(call) = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice()) else {
+        return false;
+    };
+
+    matches!(
+        call.0.function,
+        RuntimeCall::EVMNoncetracker(
+            pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by { .. }
+        )
     )
 }
 
@@ -1281,6 +1311,7 @@ impl_runtime_apis! {
                 RuntimeCall::ExecutivePallet(call) => ExecutivePallet::is_inherent(call),
                 RuntimeCall::Messenger(call) => Messenger::is_inherent(call),
                 RuntimeCall::Sudo(call) => Sudo::is_inherent(call),
+                RuntimeCall::EVMNoncetracker(call) => EVMNoncetracker::is_inherent(call),
                 _ => false,
             }
         }
@@ -1662,6 +1693,12 @@ impl_runtime_apis! {
 
         fn construct_domain_sudo_extrinsic(inner: Vec<u8>) -> <Block as BlockT>::Extrinsic {
             construct_sudo_call_extrinsic(inner)
+        }
+    }
+
+    impl sp_evm_tracker::EvmTrackerApi<Block> for Runtime {
+        fn is_valid_evm_contract_creation_allowed_by_call(extrinsic: Vec<u8>) -> bool {
+            is_valid_evm_contract_creation_allowed_by_call(extrinsic)
         }
     }
 

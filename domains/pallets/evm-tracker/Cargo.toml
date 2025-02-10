@@ -23,6 +23,7 @@ pallet-utility = { default-features = false, git = "https://github.com/subspace/
 scale-info = { version = "2.11.2", default-features = false, features = ["derive"] }
 sp-core = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 sp-domains = { version = "0.1.0", default-features = false, path = "../../../crates/sp-domains" }
+sp-evm-tracker = { version = "0.1.0", default-features = false, path = "../../primitives/evm-tracker" }
 sp-runtime = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
 subspace-runtime-primitives = { version = "0.1.0", path = "../../../crates/subspace-runtime-primitives", default-features = false }
 
@@ -39,6 +40,7 @@ std = [
     "scale-info/std",
     "sp-core/std",
     "sp-domains/std",
+    "sp-evm-tracker/std",
     "sp-runtime/std",
     "subspace-runtime-primitives/std",
 ]
