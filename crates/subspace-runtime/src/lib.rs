@@ -1057,6 +1057,11 @@ impl FraudProofStorageKeyProvider<NumberFor<Block>> for StorageKeyProvider {
             FraudProofStorageKeyRequest::DomainSudoCall(domain_id) => {
                 pallet_domains::DomainSudoCalls::<Runtime>::hashed_key_for(domain_id)
             }
+            FraudProofStorageKeyRequest::EvmDomainContractCreationAllowedByCall(domain_id) => {
+                pallet_domains::EvmDomainContractCreationAllowedByCalls::<Runtime>::hashed_key_for(
+                    domain_id,
+                )
+            }
             FraudProofStorageKeyRequest::MmrRoot(block_number) => {
                 pallet_subspace_mmr::MmrRootHashes::<Runtime>::hashed_key_for(block_number)
             }

@@ -88,5 +88,8 @@ sp_api::decl_runtime_apis! {
     pub trait EvmTrackerApi {
         /// Returns true if evm-tracker exists in the runtime, and extrinsic is valid.
         fn is_valid_evm_contract_creation_allowed_by_call(extrinsic: Vec<u8>) -> bool;
+
+        /// Returns an encoded extrinsic for domain "set contract creation allowed by" call.
+        fn construct_evm_contract_creation_allowed_by_extrinsic(extrinsic: Vec<u8>) -> Block::Extrinsic;
     }
 }

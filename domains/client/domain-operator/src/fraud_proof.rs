@@ -411,6 +411,14 @@ where
             &self.storage_key_provider,
         )?;
 
+        let evm_domain_contract_creation_allowed_by_call_proof =
+            EvmDomainContractCreationAllowedByCallStorageProof::generate(
+                self.consensus_client.as_ref(),
+                consensus_block_hash,
+                domain_id,
+                &self.storage_key_provider,
+            )?;
+
         let invalid_domain_extrinsics_root_proof = FraudProof {
             domain_id,
             bad_receipt_hash,
@@ -422,6 +430,7 @@ where
                 maybe_domain_runtime_upgraded_proof,
                 domain_chain_allowlist_proof,
                 domain_sudo_call_proof,
+                evm_domain_contract_creation_allowed_by_call_proof,
             }),
         };
 

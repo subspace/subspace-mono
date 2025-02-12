@@ -267,6 +267,7 @@ where
             consensus_transaction_byte_fee,
             domain_chain_allowlist,
             maybe_sudo_runtime_call,
+            maybe_evm_domain_contract_creation_allowed_by_call,
         } = domain_inherent_extrinsic_data;
 
         let domain_stateless_runtime = StatelessRuntime::<Block, DomainBlock, _>::new(
@@ -315,12 +316,24 @@ where
             ),
         };
 
+        let maybe_evm_domain_contract_creation_allowed_by_call_extrinsic =
+            match maybe_evm_domain_contract_creation_allowed_by_call {
+                None => None,
+                Some(call) => Some(
+                    domain_stateless_runtime
+                        .construct_evm_contract_creation_allowed_by_extrinsic(call)
+                        .ok()
+                        .map(|call| call.encode())?,
+                ),
+            };
+
         Some(DomainInherentExtrinsic {
             domain_timestamp_extrinsic,
             maybe_domain_chain_allowlist_extrinsic,
             consensus_chain_byte_fee_extrinsic,
             maybe_domain_set_code_extrinsic,
             maybe_domain_sudo_call_extrinsic,
+            maybe_evm_domain_contract_creation_allowed_by_call_extrinsic,
         })
     }
 

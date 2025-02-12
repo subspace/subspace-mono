@@ -915,6 +915,7 @@ fn is_valid_sudo_call(encoded_ext: Vec<u8>) -> bool {
     UncheckedExtrinsic::decode(&mut encoded_ext.as_slice()).is_ok()
 }
 
+/// Constructs a domain-sudo call extrinsic from the given encoded extrinsic.
 fn construct_sudo_call_extrinsic(encoded_ext: Vec<u8>) -> <Block as BlockT>::Extrinsic {
     let ext = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice())
         .expect("must always be an valid extrinsic due to the check above; qed");
@@ -929,16 +930,33 @@ fn construct_sudo_call_extrinsic(encoded_ext: Vec<u8>) -> <Block as BlockT>::Ext
 /// Returns `true` if this is a valid pallet-evm-tracker "contract creation allowed by" inherent
 /// call.
 fn is_valid_evm_contract_creation_allowed_by_call(encoded_ext: Vec<u8>) -> bool {
-    let Ok(call) = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice()) else {
+    let Ok(ext) = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice()) else {
         return false;
     };
 
     matches!(
-        call.0.function,
+        ext.0.function,
         RuntimeCall::EVMNoncetracker(
             pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by { .. }
         )
     )
+}
+
+/// Constructs an evm-tracker call extrinsic from the given encoded extrinsic.
+fn construct_evm_contract_creation_allowed_by_extrinsic(
+    encoded_ext: Vec<u8>,
+) -> <Block as BlockT>::Extrinsic {
+    let ext = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice())
+        .expect("must always be an valid evm-tracker extrinsic due to the check above; qed");
+
+    match ext.0.function {
+        RuntimeCall::EVMNoncetracker(
+            inner_call @ pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by {
+                ..
+            },
+        ) => UncheckedExtrinsic::new_unsigned(inner_call.into()),
+        _ => panic!("must always be an valid evm-tracker extrinsic due to the check above; qed"),
+    }
 }
 
 fn extract_signer_inner<Lookup>(
@@ -1660,6 +1678,10 @@ impl_runtime_apis! {
     impl sp_evm_tracker::EvmTrackerApi<Block> for Runtime {
         fn is_valid_evm_contract_creation_allowed_by_call(extrinsic: Vec<u8>) -> bool {
             is_valid_evm_contract_creation_allowed_by_call(extrinsic)
+        }
+
+        fn construct_evm_contract_creation_allowed_by_extrinsic(extrinsic: Vec<u8>) -> <Block as BlockT>::Extrinsic {
+            construct_evm_contract_creation_allowed_by_extrinsic(extrinsic)
         }
     }
 

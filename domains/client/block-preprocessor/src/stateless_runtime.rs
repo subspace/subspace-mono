@@ -407,4 +407,15 @@ where
             inner_call,
         )
     }
+
+    pub fn construct_evm_contract_creation_allowed_by_extrinsic(
+        &self,
+        inner_call: Vec<u8>,
+    ) -> Result<Block::Extrinsic, ApiError> {
+        <Self as EvmTrackerApi<Block>>::construct_evm_contract_creation_allowed_by_extrinsic(
+            self,
+            Default::default(),
+            inner_call,
+        )
+    }
 }
