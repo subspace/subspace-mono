@@ -1,6 +1,8 @@
 use codec::{Codec, Encode};
 use domain_runtime_primitives::opaque::AccountId;
-use domain_runtime_primitives::{Balance, CheckExtrinsicsValidityError, DecodeExtrinsicError};
+use domain_runtime_primitives::{
+    Balance, CheckExtrinsicsValidityError, DecodeExtrinsicError, EthereumAccountId,
+};
 use sc_client_api::execution_extensions::ExtensionsFactory;
 use sc_executor::RuntimeVersionOf;
 use sp_api::{ApiError, Core};
@@ -8,7 +10,7 @@ use sp_core::traits::{CallContext, CodeExecutor, FetchRuntimeCode, RuntimeCode};
 use sp_core::Hasher;
 use sp_domain_sudo::DomainSudoApi;
 use sp_domains::core_api::DomainCoreApi;
-use sp_domains::{ChainId, ChannelId, DomainAllowlistUpdates};
+use sp_domains::{ChainId, ChannelId, DomainAllowlistUpdates, PermissionedActionAllowedBy};
 use sp_evm_tracker::EvmTrackerApi;
 use sp_messenger::messages::MessageKey;
 use sp_messenger::{MessengerApi, RelayerApi};
@@ -388,12 +390,12 @@ where
 
     pub fn is_valid_evm_contract_creation_allowed_by_call(
         &self,
-        extrinsic: Vec<u8>,
+        decoded_argument: PermissionedActionAllowedBy<EthereumAccountId>,
     ) -> Result<bool, ApiError> {
         <Self as EvmTrackerApi<Block>>::is_valid_evm_contract_creation_allowed_by_call(
             self,
             Default::default(),
-            extrinsic,
+            decoded_argument,
         )
     }
 
@@ -410,7 +412,7 @@ where
 
     pub fn construct_evm_contract_creation_allowed_by_extrinsic(
         &self,
-        inner_call: Vec<u8>,
+        inner_call: PermissionedActionAllowedBy<EthereumAccountId>,
     ) -> Result<Block::Extrinsic, ApiError> {
         <Self as EvmTrackerApi<Block>>::construct_evm_contract_creation_allowed_by_extrinsic(
             self,

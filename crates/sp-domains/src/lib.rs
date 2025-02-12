@@ -1536,7 +1536,7 @@ impl DomainSudoCall {
 /// there is an empty runtime call inside
 #[derive(Default, Debug, Encode, Decode, PartialEq, Eq, Clone, TypeInfo)]
 pub struct EvmDomainContractCreationAllowedByCall {
-    pub maybe_call: Option<Vec<u8>>,
+    pub maybe_call: Option<PermissionedActionAllowedBy<EthereumAccountId>>,
 }
 
 impl EvmDomainContractCreationAllowedByCall {
@@ -1685,7 +1685,7 @@ sp_api::decl_runtime_apis! {
 
         /// Returns the "set contract creation allowed by" call for the given EVM domain, if any.
         /// Only present in API versions 4 and later.
-        fn evm_domain_contract_creation_allowed_by_call(domain_id: DomainId) -> Option<Vec<u8>>;
+        fn evm_domain_contract_creation_allowed_by_call(domain_id: DomainId) -> Option<PermissionedActionAllowedBy<EthereumAccountId>>;
 
         /// Returns the last confirmed domain block execution receipt.
         fn last_confirmed_domain_block_receipt(domain_id: DomainId) ->Option<ExecutionReceiptFor<DomainHeader, Block, Balance>>;

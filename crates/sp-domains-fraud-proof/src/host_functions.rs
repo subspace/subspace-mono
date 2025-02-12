@@ -395,9 +395,9 @@ where
                     .ok()
             }
             StatelessDomainRuntimeCall::IsValidEvmDomainContractCreationAllowedByCall(
-                encoded_extrinsic,
+                decoded_argument,
             ) => domain_stateless_runtime
-                .is_valid_evm_contract_creation_allowed_by_call(encoded_extrinsic)
+                .is_valid_evm_contract_creation_allowed_by_call(decoded_argument)
                 .ok(),
         }
     }

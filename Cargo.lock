@@ -11920,8 +11920,10 @@ name = "sp-evm-tracker"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "domain-runtime-primitives",
  "parity-scale-codec",
  "sp-api",
+ "sp-domains",
  "sp-inherents",
 ]
 

@@ -1,12 +1,9 @@
 //! Inherents for EVM tracker
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
 use codec::{Decode, Encode};
+use domain_runtime_primitives::EthereumAccountId;
+use sp_domains::PermissionedActionAllowedBy;
 #[cfg(feature = "std")]
 use sp_inherents::{Error, InherentData};
 use sp_inherents::{InherentIdentifier, IsFatalError};
@@ -32,7 +29,7 @@ impl IsFatalError for InherentError {
 #[derive(Debug, Encode, Decode)]
 pub struct InherentType {
     /// EVM tracker "set contract creation allowed by" call
-    pub maybe_call: Option<Vec<u8>>,
+    pub maybe_call: Option<PermissionedActionAllowedBy<EthereumAccountId>>,
 }
 
 /// Provides the set code inherent data.
@@ -44,7 +41,7 @@ pub struct InherentDataProvider {
 #[cfg(feature = "std")]
 impl InherentDataProvider {
     /// Create new inherent data provider from the given `data`.
-    pub fn new(maybe_call: Option<Vec<u8>>) -> Self {
+    pub fn new(maybe_call: Option<PermissionedActionAllowedBy<EthereumAccountId>>) -> Self {
         Self {
             data: InherentType { maybe_call },
         }
@@ -80,16 +77,16 @@ impl sp_inherents::InherentDataProvider for InherentDataProvider {
 
 /// Trait to convert Unchecked extrinsic into a Pallet-specific call
 pub trait IntoEvmTrackerCall<Call> {
-    fn into_evm_tracker_call(call: Vec<u8>) -> Call;
+    fn into_evm_tracker_call(call: PermissionedActionAllowedBy<EthereumAccountId>) -> Call;
 }
 
 sp_api::decl_runtime_apis! {
     /// Api to check and verify the evm-tracker extrinsic calls
     pub trait EvmTrackerApi {
-        /// Returns true if evm-tracker exists in the runtime, and extrinsic is valid.
-        fn is_valid_evm_contract_creation_allowed_by_call(extrinsic: Vec<u8>) -> bool;
+        /// Returns true if evm-tracker exists in the runtime, and the decoded argument is valid.
+        fn is_valid_evm_contract_creation_allowed_by_call(decoded_argument: PermissionedActionAllowedBy<EthereumAccountId>) -> bool;
 
         /// Returns an encoded extrinsic for domain "set contract creation allowed by" call.
-        fn construct_evm_contract_creation_allowed_by_extrinsic(extrinsic: Vec<u8>) -> Block::Extrinsic;
+        fn construct_evm_contract_creation_allowed_by_extrinsic(decoded_argument: PermissionedActionAllowedBy<EthereumAccountId>) -> Block::Extrinsic;
     }
 }

@@ -34,7 +34,7 @@ use core::num::NonZeroU64;
 use domain_runtime_primitives::opaque::Header as DomainHeader;
 use domain_runtime_primitives::{
     maximum_domain_block_weight, AccountIdConverter, BlockNumber as DomainNumber,
-    Hash as DomainHash, MAX_OUTGOING_MESSAGES,
+    EthereumAccountId, Hash as DomainHash, MAX_OUTGOING_MESSAGES,
 };
 use frame_support::genesis_builder_helper::{build_state, get_preset};
 use frame_support::inherent::ProvideInherent;
@@ -61,8 +61,8 @@ use sp_core::{ConstBool, OpaqueMetadata, H256};
 use sp_domains::bundle_producer_election::BundleProducerElectionParams;
 use sp_domains::{
     ChannelId, DomainAllowlistUpdates, DomainId, DomainInstanceData, ExecutionReceiptFor,
-    OperatorId, OperatorPublicKey, OperatorRewardSource, DOMAIN_STORAGE_FEE_MULTIPLIER,
-    INITIAL_DOMAIN_TX_RANGE,
+    OperatorId, OperatorPublicKey, OperatorRewardSource, PermissionedActionAllowedBy,
+    DOMAIN_STORAGE_FEE_MULTIPLIER, INITIAL_DOMAIN_TX_RANGE,
 };
 use sp_domains_fraud_proof::fraud_proof::FraudProof;
 use sp_domains_fraud_proof::storage_proof::{
@@ -1367,7 +1367,7 @@ impl_runtime_apis! {
             Domains::domain_sudo_call(domain_id)
         }
 
-        fn evm_domain_contract_creation_allowed_by_call(domain_id: DomainId) -> Option<Vec<u8>> {
+        fn evm_domain_contract_creation_allowed_by_call(domain_id: DomainId) -> Option<PermissionedActionAllowedBy<EthereumAccountId>> {
             Domains::evm_domain_contract_creation_allowed_by_call(domain_id)
         }
 

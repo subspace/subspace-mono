@@ -725,12 +725,11 @@ impl pallet_evm::OnChargeEVMTransaction<Runtime> for EVMCurrencyAdapter {
 pub struct IntoEvmTrackerCall;
 
 impl sp_evm_tracker::IntoEvmTrackerCall<pallet_evm_tracker::Call<Runtime>> for IntoEvmTrackerCall {
-    fn into_evm_tracker_call(call: Vec<u8>) -> pallet_evm_tracker::Call<Runtime> {
-        use sp_domain_sudo::IntoRuntimeCall;
-
-        match crate::IntoRuntimeCall::runtime_call(call) {
-            RuntimeCall::EVMNoncetracker(call) => call,
-            _ => unreachable!("must always be a valid pallet-evm-tracker domain extrinsic as checked by consensus chain; qed"),
+    fn into_evm_tracker_call(
+        call: PermissionedActionAllowedBy<AccountId>,
+    ) -> pallet_evm_tracker::Call<Runtime> {
+        pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by {
+            contract_creation_allowed_by: call,
         }
     }
 }
@@ -968,34 +967,23 @@ fn construct_sudo_call_extrinsic(encoded_ext: Vec<u8>) -> <Block as BlockT>::Ext
 
 /// Returns `true` if this is a valid pallet-evm-tracker "contract creation allowed by" inherent
 /// call.
-fn is_valid_evm_contract_creation_allowed_by_call(encoded_ext: Vec<u8>) -> bool {
-    let Ok(ext) = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice()) else {
-        return false;
-    };
-
-    matches!(
-        ext.0.function,
-        RuntimeCall::EVMNoncetracker(
-            pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by { .. }
-        )
-    )
+fn is_valid_evm_contract_creation_allowed_by_call(
+    _decoded_argument: PermissionedActionAllowedBy<AccountId>,
+) -> bool {
+    // All possible argument values are valid
+    true
 }
 
-/// Constructs an evm-tracker call extrinsic from the given encoded extrinsic.
+/// Constructs an evm-tracker call extrinsic from the given extrinsic.
 fn construct_evm_contract_creation_allowed_by_extrinsic(
-    encoded_ext: Vec<u8>,
+    decoded_argument: PermissionedActionAllowedBy<AccountId>,
 ) -> <Block as BlockT>::Extrinsic {
-    let ext = UncheckedExtrinsic::decode(&mut encoded_ext.as_slice())
-        .expect("must always be an valid evm-tracker extrinsic due to the check above; qed");
-
-    match ext.0.function {
-        RuntimeCall::EVMNoncetracker(
-            inner_call @ pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by {
-                ..
-            },
-        ) => UncheckedExtrinsic::new_unsigned(inner_call.into()),
-        _ => panic!("must always be an valid evm-tracker extrinsic due to the check above; qed"),
-    }
+    UncheckedExtrinsic::new_unsigned(
+        pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by {
+            contract_creation_allowed_by: decoded_argument,
+        }
+        .into(),
+    )
 }
 
 fn extract_signer_inner<Lookup>(
@@ -1715,12 +1703,12 @@ impl_runtime_apis! {
     }
 
     impl sp_evm_tracker::EvmTrackerApi<Block> for Runtime {
-        fn is_valid_evm_contract_creation_allowed_by_call(extrinsic: Vec<u8>) -> bool {
-            is_valid_evm_contract_creation_allowed_by_call(extrinsic)
+        fn is_valid_evm_contract_creation_allowed_by_call(decoded_argument: PermissionedActionAllowedBy<AccountId>) -> bool {
+            is_valid_evm_contract_creation_allowed_by_call(decoded_argument)
         }
 
-        fn construct_evm_contract_creation_allowed_by_extrinsic(extrinsic: Vec<u8>) -> <Block as BlockT>::Extrinsic {
-            construct_evm_contract_creation_allowed_by_extrinsic(extrinsic)
+        fn construct_evm_contract_creation_allowed_by_extrinsic(decoded_argument: PermissionedActionAllowedBy<AccountId>) -> <Block as BlockT>::Extrinsic {
+            construct_evm_contract_creation_allowed_by_extrinsic(decoded_argument)
         }
     }
 

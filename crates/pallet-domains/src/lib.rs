@@ -34,6 +34,7 @@ use alloc::collections::btree_map::BTreeMap;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 use codec::{Decode, Encode};
+use domain_runtime_primitives::EthereumAccountId;
 use frame_support::ensure;
 use frame_support::pallet_prelude::StorageVersion;
 use frame_support::traits::fungible::{Inspect, InspectHold};
@@ -205,7 +206,7 @@ mod pallet {
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
     use codec::FullCodec;
-    use domain_runtime_primitives::EVMChainId;
+    use domain_runtime_primitives::{EVMChainId, EthereumAccountId};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::fungible::{Inspect, InspectHold, Mutate, MutateHold};
     use frame_support::traits::tokens::Preservation;
@@ -1785,8 +1786,9 @@ mod pallet {
         pub fn send_evm_domain_set_contract_creation_allowed_by_call(
             origin: OriginFor<T>,
             domain_id: DomainId,
-            // TODO: contract_creation_allowed_by: sp_domains::PermissionedActionAllowedBy<EthereumAccountId>,
-            call: Vec<u8>,
+            contract_creation_allowed_by: sp_domains::PermissionedActionAllowedBy<
+                EthereumAccountId,
+            >,
         ) -> DispatchResult {
             let maybe_owner = ensure_signed(origin)?;
 
@@ -1812,7 +1814,7 @@ mod pallet {
                 domain_runtime_call(
                     domain_runtime,
                     StatelessDomainRuntimeCall::IsValidEvmDomainContractCreationAllowedByCall(
-                        call.clone()
+                        contract_creation_allowed_by.clone()
                     ),
                 )
                 .unwrap_or(false),
@@ -1822,7 +1824,7 @@ mod pallet {
             EvmDomainContractCreationAllowedByCalls::<T>::set(
                 domain_id,
                 EvmDomainContractCreationAllowedByCall {
-                    maybe_call: Some(call),
+                    maybe_call: Some(contract_creation_allowed_by),
                 },
             );
 
@@ -3156,7 +3158,9 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns EVM domain's "set contract creation allowed by" call, if any.
-    pub fn evm_domain_contract_creation_allowed_by_call(domain_id: DomainId) -> Option<Vec<u8>> {
+    pub fn evm_domain_contract_creation_allowed_by_call(
+        domain_id: DomainId,
+    ) -> Option<sp_domains::PermissionedActionAllowedBy<EthereumAccountId>> {
         EvmDomainContractCreationAllowedByCalls::<T>::get(domain_id).maybe_call
     }
 }

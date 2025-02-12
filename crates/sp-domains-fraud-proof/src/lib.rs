@@ -25,6 +25,7 @@ use crate::storage_proof::FraudProofStorageKeyRequest;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 use codec::{Decode, Encode};
+use domain_runtime_primitives::EthereumAccountId;
 #[cfg(feature = "std")]
 pub use host_functions::{
     FraudProofExtension, FraudProofHostFunctions, FraudProofHostFunctionsImpl,
@@ -34,7 +35,7 @@ pub use runtime_interface::fraud_proof_runtime_interface;
 pub use runtime_interface::fraud_proof_runtime_interface::HostFunctions;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_domains::DomainAllowlistUpdates;
+use sp_domains::{DomainAllowlistUpdates, PermissionedActionAllowedBy};
 use sp_runtime::traits::{Header as HeaderT, NumberFor};
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity};
 use sp_runtime::OpaqueExtrinsic;
@@ -102,7 +103,8 @@ pub struct DomainInherentExtrinsicData {
     pub consensus_transaction_byte_fee: Balance,
     pub domain_chain_allowlist: DomainAllowlistUpdates,
     pub maybe_sudo_runtime_call: Option<Vec<u8>>,
-    pub maybe_evm_domain_contract_creation_allowed_by_call: Option<Vec<u8>>,
+    pub maybe_evm_domain_contract_creation_allowed_by_call:
+        Option<PermissionedActionAllowedBy<EthereumAccountId>>,
 }
 
 impl PassBy for DomainInherentExtrinsicData {
@@ -139,7 +141,7 @@ pub enum StatelessDomainRuntimeCall {
     IsInherentExtrinsic(OpaqueExtrinsic),
     IsDecodableExtrinsic(OpaqueExtrinsic),
     IsValidDomainSudoCall(Vec<u8>),
-    IsValidEvmDomainContractCreationAllowedByCall(Vec<u8>),
+    IsValidEvmDomainContractCreationAllowedByCall(PermissionedActionAllowedBy<EthereumAccountId>),
 }
 
 impl PassBy for StatelessDomainRuntimeCall {
