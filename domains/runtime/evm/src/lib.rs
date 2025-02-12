@@ -919,7 +919,14 @@ fn construct_sudo_call_extrinsic(encoded_ext: Vec<u8>) -> <Block as BlockT>::Ext
 fn is_valid_evm_contract_creation_allowed_by_call(
     _decoded_argument: PermissionedActionAllowedBy<AccountId>,
 ) -> bool {
-    // All possible argument values are valid
+    // All possible argument values are valid for this specific EVM domain implementation.
+    //
+    // This function might seem redundant, but it allows other EVM domain implementations to
+    // restrict the allowed values for this inherent call. Unlike the allow list, this is in domain
+    // runtime code, so it can only be changed by root.
+    //
+    // For example, a private EVM could hard-code a ban on `Anyone`, ban specific accounts, or
+    // limit the number of accounts. And a public EVM could instead only accept `Anyone`.
     true
 }
 

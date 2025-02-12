@@ -394,6 +394,8 @@ where
                     .is_valid_sudo_call(encoded_extrinsic)
                     .ok()
             }
+            // Check if the EVM domain has been upgraded with the relevant runtime calls,
+            // and that EVM runtime implementation accepts this allow list value.
             StatelessDomainRuntimeCall::IsValidEvmDomainContractCreationAllowedByCall(
                 decoded_argument,
             ) => domain_stateless_runtime
