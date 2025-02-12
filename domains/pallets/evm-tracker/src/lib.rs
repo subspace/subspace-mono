@@ -37,12 +37,10 @@ mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_core::U256;
     use sp_domains::PermissionedActionAllowedBy;
-    use sp_evm_tracker::{InherentError, InherentType, IntoEvmTrackerCall, INHERENT_IDENTIFIER};
+    use sp_evm_tracker::{InherentError, InherentType, INHERENT_IDENTIFIER};
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
-        type IntoEvmTrackerCall: IntoEvmTrackerCall<Call<Self>>;
-    }
+    pub trait Config: frame_system::Config {}
 
     /// Storage to hold evm account nonces.
     /// This is only used for pre_dispatch since EVM pre_dispatch does not
@@ -121,7 +119,11 @@ mod pallet {
 
             inherent_data
                 .maybe_call
-                .map(T::IntoEvmTrackerCall::into_evm_tracker_call)
+                .map(|contract_creation_allowed_by| {
+                    Call::inherent_set_contract_creation_allowed_by {
+                        contract_creation_allowed_by,
+                    }
+                })
         }
 
         fn is_inherent_required(data: &InherentData) -> Result<Option<Self::Error>, Self::Error> {

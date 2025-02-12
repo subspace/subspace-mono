@@ -721,21 +721,7 @@ impl MaybeIntoEvmCall<Runtime> for RuntimeCall {
     }
 }
 
-pub struct IntoEvmTrackerCall;
-
-impl sp_evm_tracker::IntoEvmTrackerCall<pallet_evm_tracker::Call<Runtime>> for IntoEvmTrackerCall {
-    fn into_evm_tracker_call(
-        call: PermissionedActionAllowedBy<AccountId>,
-    ) -> pallet_evm_tracker::Call<Runtime> {
-        pallet_evm_tracker::Call::inherent_set_contract_creation_allowed_by {
-            contract_creation_allowed_by: call,
-        }
-    }
-}
-
-impl pallet_evm_tracker::Config for Runtime {
-    type IntoEvmTrackerCall = IntoEvmTrackerCall;
-}
+impl pallet_evm_tracker::Config for Runtime {}
 
 parameter_types! {
     pub const PostOnlyBlockHash: PostLogContent = PostLogContent::OnlyBlockHash;

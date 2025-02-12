@@ -75,11 +75,6 @@ impl sp_inherents::InherentDataProvider for InherentDataProvider {
     }
 }
 
-/// Trait to convert Unchecked extrinsic into a Pallet-specific call
-pub trait IntoEvmTrackerCall<Call> {
-    fn into_evm_tracker_call(call: PermissionedActionAllowedBy<EthereumAccountId>) -> Call;
-}
-
 sp_api::decl_runtime_apis! {
     /// Api to check and verify the evm-tracker extrinsic calls
     pub trait EvmTrackerApi {
