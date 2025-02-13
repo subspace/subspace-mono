@@ -339,10 +339,10 @@ where
             read_records_data.truncate(read_records_data.len() - MAX_SEGMENT_PADDING);
         }
 
-        let data_length = self.decode_data_length(&read_records_data, mapping)?;
+        let data_lengths = decode_data_length(&read_records_data, self.max_object_len, mapping)?;
 
-        let data_length = if let Some(data_length) = data_length {
-            data_length
+        let data_length = if let Some((length_prefix_len, data_length)) = data_lengths {
+            length_prefix_len + data_length
         } else if !last_data_piece_in_segment {
             // Need the next piece to read the length of data, but we can only use it if there was
             // no segment padding
@@ -358,8 +358,11 @@ where
             next_source_piece_index = next_source_piece_index.next_source_index();
             read_records_data.extend(piece.record().to_raw_record_chunks().flatten().copied());
 
-            self.decode_data_length(&read_records_data, mapping)?
-                .expect("Extra RawRecord is larger than the length encoding; qed")
+            let (length_prefix_len, data_length) =
+                decode_data_length(&read_records_data, self.max_object_len, mapping)?
+                    .expect("Extra RawRecord is larger than the length encoding; qed");
+
+            length_prefix_len + data_length
         } else {
             trace!(
                 piece_position_in_segment,
@@ -531,7 +534,11 @@ where
         );
 
         // Return an error if the length is unreasonably large, before we get the next segment
-        if let Some(data_length) = self.decode_data_length(data.as_slice(), mapping)? {
+        if let Some((length_prefix_len, data_length)) =
+            decode_data_length(data.as_slice(), self.max_object_len, mapping)?
+        {
+            let data_length = length_prefix_len + data_length;
+
             // If we have the whole object, decode and return it.
             // TODO: use tokio Bytes type to re-use the same allocation by stripping the length at the start
             if data.len() >= data_length {
@@ -554,9 +561,11 @@ where
                     SegmentItem::BlockContinuation { bytes, .. } => {
                         data.extend_from_slice(&bytes);
 
-                        if let Some(data_length) =
-                            self.decode_data_length(data.as_slice(), mapping)?
+                        if let Some((length_prefix_len, data_length)) =
+                            decode_data_length(data.as_slice(), self.max_object_len, mapping)?
                         {
+                            let data_length = length_prefix_len + data_length;
+
                             if data.len() >= data_length {
                                 return Vec::<u8>::decode(&mut data.as_slice())
                                     .map_err(|source| Error::ObjectDecoding { source, mapping });
@@ -656,77 +665,77 @@ where
                 Error::PieceGetterError { source, mapping }
             })
     }
+}
 
-    /// Validate and decode the encoded length of `data`, including the encoded length bytes.
-    /// `data` may be incomplete.
-    ///
-    /// Returns `Ok(Some(data_length_encoded_length + data_length))` if the length is valid,
-    /// `Ok(None)` if there aren't enough bytes to decode the length, otherwise an error.
-    ///
-    /// The mapping is only used for error reporting.
-    fn decode_data_length(
-        &self,
-        mut data: &[u8],
-        mapping: GlobalObject,
-    ) -> Result<Option<usize>, Error> {
-        let data_length = match Compact::<u64>::decode(&mut data) {
-            Ok(Compact(data_length)) => {
-                let data_length = data_length as usize;
-                if data_length > self.max_object_len {
-                    debug!(
-                        data_length,
-                        max_object_len = self.max_object_len,
-                        ?mapping,
-                        "Data length exceeds object size limit for object fetcher"
-                    );
-
-                    return Err(Error::ObjectTooLarge {
-                        data_length,
-                        max_object_len: self.max_object_len,
-                        mapping,
-                    });
-                }
-
-                data_length
-            }
-            Err(err) => {
-                // Parity doesn't have an easily matched error enum, and all bit sequences are
-                // valid compact encodings. So we assume we don't have enough bytes to decode the
-                // length, unless we already have enough bytes to decode the maximum length.
-                if data.len() >= Compact::<u64>::compact_len(&(self.max_object_len as u64)) {
-                    debug!(
-                        length_prefix_len = data.len(),
-                        max_object_len = self.max_object_len,
-                        ?mapping,
-                        "Length prefix exceeds object size limit for object fetcher"
-                    );
-
-                    return Err(Error::LengthPrefixTooLarge {
-                        length_prefix_len: data.len(),
-                        max_object_len: self.max_object_len,
-                        mapping,
-                    });
-                }
-
+/// Validate and decode the encoded length of `data`, including the encoded length bytes.
+/// `data` may be incomplete.
+///
+/// Returns `Ok(Some((data_length_encoded_length, data_length)))` if the length is valid,
+/// `Ok(None)` if there aren't enough bytes to decode the length, otherwise an error.
+///
+/// The mapping is only used for error reporting.
+fn decode_data_length(
+    mut data: &[u8],
+    max_object_len: usize,
+    mapping: GlobalObject,
+) -> Result<Option<(usize, usize)>, Error> {
+    let data_length = match Compact::<u64>::decode(&mut data) {
+        Ok(Compact(data_length)) => {
+            let data_length = data_length as usize;
+            if data_length > max_object_len {
                 debug!(
-                    ?err,
+                    data_length,
+                    max_object_len,
                     ?mapping,
-                    "Not enough bytes to decode data length for object"
+                    "Data length exceeds object size limit for object fetcher"
                 );
 
-                return Ok(None);
+                return Err(Error::ObjectTooLarge {
+                    data_length,
+                    max_object_len,
+                    mapping,
+                });
             }
-        };
 
-        let data_length_encoded_length = Compact::<u64>::compact_len(&(data_length as u64));
+            data_length
+        }
+        Err(err) => {
+            // Parity doesn't have an easily matched error enum, and all bit sequences are
+            // valid compact encodings. So we assume we don't have enough bytes to decode the
+            // length, unless we already have enough bytes to decode the maximum length.
+            if data.len() >= Compact::<u64>::compact_len(&(max_object_len as u64)) {
+                debug!(
+                    length_prefix_len = data.len(),
+                    max_object_len,
+                    ?mapping,
+                    "Length prefix exceeds object size limit for object fetcher"
+                );
 
-        trace!(
-            data_length,
-            data_length_encoded_length,
-            ?mapping,
-            "Decoded data length for object"
-        );
+                return Err(Error::LengthPrefixTooLarge {
+                    length_prefix_len: data.len(),
+                    max_object_len,
+                    mapping,
+                });
+            }
 
-        Ok(Some(data_length_encoded_length + data_length))
-    }
+            debug!(
+                ?err,
+                ?mapping,
+                "Not enough bytes to decode data length for object"
+            );
+
+            return Ok(None);
+        }
+    };
+
+    let data_length_encoded_length = Compact::<u64>::compact_len(&(data_length as u64));
+
+    trace!(
+        data_length,
+        data_length_encoded_length,
+        ?mapping,
+        "Decoded data length for object"
+    );
+
+    Ok(Some((data_length_encoded_length, data_length)))
 }
