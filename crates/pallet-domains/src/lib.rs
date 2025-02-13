@@ -34,6 +34,7 @@ use alloc::collections::btree_map::BTreeMap;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 use codec::{Decode, Encode};
+use domain_runtime_primitives::EthereumAccountId;
 use frame_support::ensure;
 use frame_support::pallet_prelude::StorageVersion;
 use frame_support::traits::fungible::{Inspect, InspectHold};
@@ -205,7 +206,7 @@ mod pallet {
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
     use codec::FullCodec;
-    use domain_runtime_primitives::EVMChainId;
+    use domain_runtime_primitives::{EVMChainId, EthereumAccountId};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::fungible::{Inspect, InspectHold, Mutate, MutateHold};
     use frame_support::traits::tokens::Preservation;
@@ -216,9 +217,10 @@ mod pallet {
     use sp_core::H256;
     use sp_domains::bundle_producer_election::ProofOfElectionError;
     use sp_domains::{
-        BundleDigest, DomainBundleSubmitted, DomainId, DomainSudoCall, DomainsTransfersTracker,
-        EpochIndex, GenesisDomain, OnChainRewards, OnDomainInstantiated, OperatorAllowList,
-        OperatorId, OperatorRewardSource, RuntimeId, RuntimeObject, RuntimeType,
+        BundleDigest, DomainBundleSubmitted, DomainId, DomainOwner, DomainSudoCall,
+        DomainsTransfersTracker, EpochIndex, EvmDomainContractCreationAllowedByCall, GenesisDomain,
+        OnChainRewards, OnDomainInstantiated, OperatorAllowList, OperatorId, OperatorRewardSource,
+        RuntimeId, RuntimeObject, RuntimeType,
     };
     use sp_domains_fraud_proof::fraud_proof_runtime_interface::domain_runtime_call;
     use sp_domains_fraud_proof::storage_proof::{self, FraudProofStorageKeyProvider};
@@ -700,7 +702,7 @@ mod pallet {
     #[pallet::storage]
     pub type DomainRuntimeUpgrades<T> = StorageValue<_, Vec<RuntimeId>, ValueQuery>;
 
-    /// Temporary storage to hold the sudo calls meant for the Domains.
+    /// Temporary storage to hold the sudo calls meant for domains.
     ///
     /// Storage is cleared when there are any successful bundles in the next block.
     /// Only one sudo call is allowed per domain per consensus block.
@@ -713,6 +715,14 @@ mod pallet {
     /// A frozen domain does not accept the bundles but does accept a fraud proof.
     #[pallet::storage]
     pub type FrozenDomains<T> = StorageValue<_, BTreeSet<DomainId>, ValueQuery>;
+
+    /// Temporary storage to hold the "set contract creation allowed by" calls meant for EVM Domains.
+    ///
+    /// Storage is cleared when there are any successful bundles in the next block.
+    /// Only one of these calls is allowed per domain per consensus block.
+    #[pallet::storage]
+    pub type EvmDomainContractCreationAllowedByCalls<T: Config> =
+        StorageMap<_, Identity, DomainId, EvmDomainContractCreationAllowedByCall, ValueQuery>;
 
     #[derive(TypeInfo, Encode, Decode, PalletError, Debug, PartialEq)]
     pub enum BundleError {
@@ -881,12 +891,20 @@ mod pallet {
         BundleStorageFund(BundleStorageFundError),
         /// Permissioned action is not allowed by the caller.
         PermissionedActionNotAllowed,
-        /// Domain Sudo already exists.
+        /// Domain Sudo call already exists.
         DomainSudoCallExists,
         /// Invalid Domain sudo call.
         InvalidDomainSudoCall,
         /// Domain must be frozen before execution receipt can be pruned.
         DomainNotFrozen,
+        /// Domain is not an EVM domain.
+        NotEvmDomain,
+        /// Account is not a Domain owner.
+        NotDomainOwner,
+        /// EVM Domain "set contract creation allowed by" call already exists.
+        EvmDomainContractCreationAllowedByCallExists,
+        /// EVM Domain "set contract creation allowed by" call is not a valid call.
+        InvalidEvmDomainContractCreationAllowedByCall,
     }
 
     /// Reason for slashing an operator
@@ -1761,6 +1779,57 @@ mod pallet {
             // Ensure the returned weight not exceed the maximum weight in the `pallet::weight`
             Ok(Some(actual_weight.min(Self::max_submit_receipt_weight())).into())
         }
+
+        /// Submit an EVM domain "set contract creation allowed by" call.
+        #[pallet::call_index(22)]
+        #[pallet::weight(<T as frame_system::Config>::DbWeight::get().reads_writes(3, 1))]
+        pub fn send_evm_domain_set_contract_creation_allowed_by_call(
+            origin: OriginFor<T>,
+            domain_id: DomainId,
+            contract_creation_allowed_by: sp_domains::PermissionedActionAllowedBy<
+                EthereumAccountId,
+            >,
+        ) -> DispatchResult {
+            let maybe_owner = ensure_signed(origin)?;
+
+            ensure!(
+                Pallet::<T>::is_evm_domain(domain_id),
+                Error::<T>::NotEvmDomain,
+            );
+            ensure!(
+                Pallet::<T>::is_domain_owner(domain_id, maybe_owner),
+                Error::<T>::NotDomainOwner,
+            );
+            ensure!(
+                EvmDomainContractCreationAllowedByCalls::<T>::get(domain_id)
+                    .maybe_call
+                    .is_none(),
+                Error::<T>::EvmDomainContractCreationAllowedByCallExists,
+            );
+
+            let domain_runtime = Self::domain_runtime_code(domain_id).ok_or(
+                Error::<T>::DomainRegistry(DomainRegistryError::DomainNotFound),
+            )?;
+            ensure!(
+                domain_runtime_call(
+                    domain_runtime,
+                    StatelessDomainRuntimeCall::IsValidEvmDomainContractCreationAllowedByCall(
+                        contract_creation_allowed_by.clone()
+                    ),
+                )
+                .unwrap_or(false),
+                Error::<T>::InvalidEvmDomainContractCreationAllowedByCall
+            );
+
+            EvmDomainContractCreationAllowedByCalls::<T>::set(
+                domain_id,
+                EvmDomainContractCreationAllowedByCall {
+                    maybe_call: Some(contract_creation_allowed_by),
+                },
+            );
+
+            Ok(())
+        }
     }
 
     #[pallet::genesis_config]
@@ -1881,9 +1950,17 @@ mod pallet {
             for (domain_id, _) in SuccessfulBundles::<T>::drain() {
                 ConsensusBlockHash::<T>::insert(domain_id, parent_number, parent_hash);
                 T::DomainBundleSubmitted::domain_bundle_submitted(domain_id);
+
+                // And clear the domain inherents which have been submitted.
                 DomainSudoCalls::<T>::mutate(domain_id, |sudo_call| {
                     sudo_call.clear();
                 });
+                EvmDomainContractCreationAllowedByCalls::<T>::mutate(
+                    domain_id,
+                    |evm_contract_call| {
+                        evm_contract_call.clear();
+                    },
+                );
             }
 
             for (operator_id, slot_set) in OperatorBundleSlot::<T>::drain() {
@@ -3057,7 +3134,7 @@ impl<T: Config> Pallet<T> {
         DomainStakingSummary::<T>::contains_key(domain_id)
     }
 
-    /// Returns domain's sudo call if any.
+    /// Returns domain's sudo call, if any.
     pub fn domain_sudo_call(domain_id: DomainId) -> Option<Vec<u8>> {
         DomainSudoCalls::<T>::get(domain_id).maybe_call
     }
@@ -3069,6 +3146,22 @@ impl<T: Config> Pallet<T> {
         let head_receipt_number = HeadReceiptNumber::<T>::get(domain_id);
 
         Ok(domain_best_number.saturating_sub(head_receipt_number))
+    }
+
+    /// Returns true if this is an EVM domain.
+    fn is_evm_domain(domain_id: DomainId) -> bool {
+        if let Some(domain_obj) = DomainRegistry::<T>::get(domain_id) {
+            domain_obj.domain_runtime_info.is_evm()
+        } else {
+            false
+        }
+    }
+
+    /// Returns EVM domain's "set contract creation allowed by" call, if any.
+    pub fn evm_domain_contract_creation_allowed_by_call(
+        domain_id: DomainId,
+    ) -> Option<sp_domains::PermissionedActionAllowedBy<EthereumAccountId>> {
+        EvmDomainContractCreationAllowedByCalls::<T>::get(domain_id).maybe_call
     }
 }
 

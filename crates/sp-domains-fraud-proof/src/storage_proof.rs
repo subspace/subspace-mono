@@ -7,7 +7,8 @@ use sp_domains::proof_provider_and_verifier::{
     StorageProofVerifier, VerificationError as StorageProofVerificationError,
 };
 use sp_domains::{
-    DomainAllowlistUpdates, DomainId, DomainSudoCall, OpaqueBundle, RuntimeId, RuntimeObject,
+    DomainAllowlistUpdates, DomainId, DomainSudoCall, EvmDomainContractCreationAllowedByCall,
+    OpaqueBundle, RuntimeId, RuntimeObject,
 };
 use sp_runtime::traits::{Block as BlockT, HashingFor, Header as HeaderT, NumberFor};
 use sp_runtime_interface::pass_by;
@@ -45,6 +46,7 @@ pub enum VerificationError {
     TransfersStorageProof(StorageProofVerificationError),
     ExtrinsicStorageProof(StorageProofVerificationError),
     DomainSudoCallStorageProof(StorageProofVerificationError),
+    EvmDomainContractCreationAllowedByCallStorageProof(StorageProofVerificationError),
     MmrRootStorageProof(StorageProofVerificationError),
 }
 
@@ -56,6 +58,7 @@ pub enum FraudProofStorageKeyRequest<Number> {
     DomainRuntimeUpgrades,
     RuntimeRegistry(RuntimeId),
     DomainSudoCall(DomainId),
+    EvmDomainContractCreationAllowedByCall(DomainId),
     MmrRoot(Number),
 }
 
@@ -75,6 +78,9 @@ impl<Number> FraudProofStorageKeyRequest<Number> {
             Self::RuntimeRegistry(_) => VerificationError::RuntimeRegistryStorageProof(err),
             FraudProofStorageKeyRequest::DomainSudoCall(_) => {
                 VerificationError::DomainSudoCallStorageProof(err)
+            }
+            FraudProofStorageKeyRequest::EvmDomainContractCreationAllowedByCall(_) => {
+                VerificationError::EvmDomainContractCreationAllowedByCallStorageProof(err)
             }
             Self::MmrRoot(_) => VerificationError::MmrRootStorageProof(err),
         }
@@ -188,6 +194,20 @@ impl<Block: BlockT> BasicStorageProof<Block> for DomainSudoCallStorageProof {
     type Key = DomainId;
     fn storage_key_request(key: Self::Key) -> FraudProofStorageKeyRequest<NumberFor<Block>> {
         FraudProofStorageKeyRequest::DomainSudoCall(key)
+    }
+}
+
+#[derive(Clone, Debug, Decode, Encode, Eq, PartialEq, TypeInfo)]
+pub struct EvmDomainContractCreationAllowedByCallStorageProof(StorageProof);
+
+impl_storage_proof!(EvmDomainContractCreationAllowedByCallStorageProof);
+impl<Block: BlockT> BasicStorageProof<Block>
+    for EvmDomainContractCreationAllowedByCallStorageProof
+{
+    type StorageValue = EvmDomainContractCreationAllowedByCall;
+    type Key = DomainId;
+    fn storage_key_request(key: Self::Key) -> FraudProofStorageKeyRequest<NumberFor<Block>> {
+        FraudProofStorageKeyRequest::EvmDomainContractCreationAllowedByCall(key)
     }
 }
 

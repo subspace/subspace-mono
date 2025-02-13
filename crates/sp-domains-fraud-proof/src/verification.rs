@@ -69,6 +69,7 @@ where
         maybe_domain_runtime_upgraded_proof,
         domain_chain_allowlist_proof,
         domain_sudo_call_proof,
+        evm_domain_contract_creation_allowed_by_call_proof,
     } = fraud_proof;
 
     let invalid_inherent_extrinsic_data =
@@ -93,6 +94,15 @@ where
         &state_root,
     )?;
 
+    let evm_domain_contract_creation_allowed_by_call =
+        <EvmDomainContractCreationAllowedByCallStorageProof as BasicStorageProof<CBlock>>::verify::<
+            SKP,
+        >(
+            evm_domain_contract_creation_allowed_by_call_proof.clone(),
+            domain_id,
+            &state_root,
+        )?;
+
     let shuffling_seed = invalid_inherent_extrinsic_data.extrinsics_shuffling_seed;
 
     let domain_inherent_extrinsic_data = DomainInherentExtrinsicData {
@@ -102,6 +112,8 @@ where
             .consensus_transaction_byte_fee,
         domain_chain_allowlist,
         maybe_sudo_runtime_call: domain_sudo_call.maybe_call,
+        maybe_evm_domain_contract_creation_allowed_by_call:
+            evm_domain_contract_creation_allowed_by_call.maybe_call,
     };
 
     let DomainInherentExtrinsic {
@@ -110,6 +122,7 @@ where
         consensus_chain_byte_fee_extrinsic,
         maybe_domain_set_code_extrinsic,
         maybe_domain_sudo_call_extrinsic,
+        maybe_evm_domain_contract_creation_allowed_by_call_extrinsic,
     } = fraud_proof_runtime_interface::construct_domain_inherent_extrinsic(
         domain_runtime_code,
         domain_inherent_extrinsic_data,
@@ -138,18 +151,29 @@ where
     let mut ordered_extrinsics =
         deduplicate_and_shuffle_extrinsics(bundle_extrinsics_digests, shuffling_seed);
 
-    // NOTE: the order of the inherent extrinsic MUST aligned with the
-    // pallets order defined in `construct_runtime` macro for domains.
-    // currently this is the following order
+    // NOTE: the order of the inherent extrinsics MUST be the same as the pallet order defined in
+    // the `construct_runtime` macro for domains.
+    // Currently this is the following order:
     // - timestamp extrinsic
     // - executive set_code extrinsic
     // - messenger update_domain_allowlist extrinsic
     // - block_fees transaction_byte_fee_extrinsic
     // - domain_sudo extrinsic
-    // since we use `push_front` the extrinsic should be pushed in reversed order
+    // - evm_tracker contract_creation_allowed_by extrinsic
+    // Since we use `push_front`, the extrinsics should be pushed in reverse order.
     // TODO: this will not be valid once we have a different runtime. To achive consistency across
-    //  domains, we should define a runtime api for each domain that should order the extrinsics
-    //  like inherent are derived while domain block is being built
+    // domains, we should define a runtime api for each domain, which orders the extrinsics the
+    // same way the inherents are derived while the domain block is being built.
+
+    if let Some(evm_domain_contract_creation_allowed_by_call_extrinsic) =
+        maybe_evm_domain_contract_creation_allowed_by_call_extrinsic
+    {
+        let evm_domain_contract_creation_allowed_by_call_extrinsic =
+            ExtrinsicDigest::new::<LayoutV1<HeaderHashingFor<DomainHeader>>>(
+                evm_domain_contract_creation_allowed_by_call_extrinsic,
+            );
+        ordered_extrinsics.push_front(evm_domain_contract_creation_allowed_by_call_extrinsic);
+    }
 
     if let Some(domain_sudo_call_extrinsic) = maybe_domain_sudo_call_extrinsic {
         let domain_sudo_call_extrinsic = ExtrinsicDigest::new::<

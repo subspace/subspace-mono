@@ -1,0 +1,32 @@
+[package]
+name = "sp-evm-tracker"
+version = "0.1.0"
+authors = ["Teor <teor@riseup.net>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://subspace.network"
+repository = "https://github.com/autonomys/subspace"
+description = "Primitives of pallet evm tracker"
+include = [
+    "/src",
+    "/Cargo.toml",
+]
+
+[dependencies]
+async-trait = { version = "0.1.83", optional = true }
+codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive"] }
+domain-runtime-primitives = { version = "0.1.0", default-features = false, path = "../runtime" }
+sp-api = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
+sp-domains = { version = "0.1.0", default-features = false, path = "../../../crates/sp-domains" }
+sp-inherents = { default-features = false, git = "https://github.com/subspace/polkadot-sdk", rev = "94a1a8143a89bbe9f938c1939ff68abc1519a305" }
+
+[features]
+default = ["std"]
+std = [
+    "async-trait",
+    "codec/std",
+    "domain-runtime-primitives/std",
+    "sp-api/std",
+    "sp-domains/std",
+    "sp-inherents/std",
+]

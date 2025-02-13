@@ -505,6 +505,10 @@ pub struct InvalidExtrinsicsRootProof {
 
     /// Optional sudo extrinsic call storage proof
     pub domain_sudo_call_proof: DomainSudoCallStorageProof,
+
+    /// Optional EVM domain "set contract creation allowed by" extrinsic call storage proof
+    pub evm_domain_contract_creation_allowed_by_call_proof:
+        EvmDomainContractCreationAllowedByCallStorageProof,
 }
 
 #[derive(Clone, Debug, Decode, Encode, Eq, PartialEq, TypeInfo)]

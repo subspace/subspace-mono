@@ -1,6 +1,8 @@
 use codec::{Codec, Encode};
 use domain_runtime_primitives::opaque::AccountId;
-use domain_runtime_primitives::{Balance, CheckExtrinsicsValidityError, DecodeExtrinsicError};
+use domain_runtime_primitives::{
+    Balance, CheckExtrinsicsValidityError, DecodeExtrinsicError, EthereumAccountId,
+};
 use sc_client_api::execution_extensions::ExtensionsFactory;
 use sc_executor::RuntimeVersionOf;
 use sp_api::{ApiError, Core};
@@ -8,7 +10,8 @@ use sp_core::traits::{CallContext, CodeExecutor, FetchRuntimeCode, RuntimeCode};
 use sp_core::Hasher;
 use sp_domain_sudo::DomainSudoApi;
 use sp_domains::core_api::DomainCoreApi;
-use sp_domains::{ChainId, ChannelId, DomainAllowlistUpdates};
+use sp_domains::{ChainId, ChannelId, DomainAllowlistUpdates, PermissionedActionAllowedBy};
+use sp_evm_tracker::EvmTrackerApi;
 use sp_messenger::messages::MessageKey;
 use sp_messenger::{MessengerApi, RelayerApi};
 use sp_runtime::traits::{Block as BlockT, NumberFor};
@@ -107,6 +110,23 @@ where
 }
 
 impl<CBlock, Block, Executor> DomainSudoApi<Block> for StatelessRuntime<CBlock, Block, Executor>
+where
+    CBlock: BlockT,
+    Block: BlockT,
+    NumberFor<Block>: Codec,
+    Executor: CodeExecutor + RuntimeVersionOf,
+{
+    fn __runtime_api_internal_call_api_at(
+        &self,
+        _at: Block::Hash,
+        params: Vec<u8>,
+        fn_name: &dyn Fn(RuntimeVersion) -> &'static str,
+    ) -> Result<Vec<u8>, ApiError> {
+        self.dispatch_call(fn_name, params)
+    }
+}
+
+impl<CBlock, Block, Executor> EvmTrackerApi<Block> for StatelessRuntime<CBlock, Block, Executor>
 where
     CBlock: BlockT,
     Block: BlockT,
@@ -336,7 +356,7 @@ where
         )
     }
 
-    /// This is stateful runtime api call and require setting of storage keys.
+    /// This is stateful runtime api call, which requires setting storage keys.
     pub fn check_extrinsics_and_do_pre_dispatch(
         &self,
         uxts: Vec<Block::Extrinsic>,
@@ -368,11 +388,33 @@ where
         <Self as DomainSudoApi<Block>>::is_valid_sudo_call(self, Default::default(), extrinsic)
     }
 
+    pub fn is_valid_evm_contract_creation_allowed_by_call(
+        &self,
+        decoded_argument: PermissionedActionAllowedBy<EthereumAccountId>,
+    ) -> Result<bool, ApiError> {
+        <Self as EvmTrackerApi<Block>>::is_valid_evm_contract_creation_allowed_by_call(
+            self,
+            Default::default(),
+            decoded_argument,
+        )
+    }
+
     pub fn construct_domain_sudo_extrinsic(
         &self,
         inner_call: Vec<u8>,
     ) -> Result<Block::Extrinsic, ApiError> {
         <Self as DomainSudoApi<Block>>::construct_domain_sudo_extrinsic(
+            self,
+            Default::default(),
+            inner_call,
+        )
+    }
+
+    pub fn construct_evm_contract_creation_allowed_by_extrinsic(
+        &self,
+        inner_call: PermissionedActionAllowedBy<EthereumAccountId>,
+    ) -> Result<Block::Extrinsic, ApiError> {
+        <Self as EvmTrackerApi<Block>>::construct_evm_contract_creation_allowed_by_extrinsic(
             self,
             Default::default(),
             inner_call,

@@ -73,6 +73,7 @@ pub type EthereumSignature = EVMSignature;
 
 /// Some way of identifying an account on the EVM chain. We intentionally make it equivalent
 /// to the public key of the EVM transaction signing scheme.
+// TODO: sometimes this type alias causes complex trait ambiguity / conflicting implementation errors.
 pub type EthereumAccountId = <<EthereumSignature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 /// Dispatch ratio for domains

@@ -25,17 +25,19 @@ pub mod create_contract;
 pub mod traits;
 
 pub use check_nonce::CheckNonce;
+use domain_runtime_primitives::EthereumAccountId;
 pub use pallet::*;
 use sp_core::U256;
 use sp_domains::PermissionedActionAllowedBy;
 
 #[frame_support::pallet]
 mod pallet {
-    use codec::Codec;
+    use domain_runtime_primitives::EthereumAccountId;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_core::U256;
     use sp_domains::PermissionedActionAllowedBy;
+    use sp_evm_tracker::{InherentError, InherentType, INHERENT_IDENTIFIER};
 
     #[pallet::config]
     pub trait Config: frame_system::Config {}
@@ -55,14 +57,18 @@ mod pallet {
     // When this type name is changed, evm_contract_creation_allowed_by_storage_key() also needs to
     // be updated.
     #[pallet::storage]
-    pub(super) type ContractCreationAllowedBy<T: Config> =
-        StorageValue<_, PermissionedActionAllowedBy<T::AccountId>, ValueQuery, DefaultToAnyone>;
+    pub(super) type ContractCreationAllowedBy<T: Config> = StorageValue<
+        _,
+        PermissionedActionAllowedBy<EthereumAccountId>,
+        ValueQuery,
+        DefaultToAnyone,
+    >;
 
     /// Default value for ContractCreationAllowedBy if it is not set.
     pub struct DefaultToAnyone;
 
-    impl<AccountId: Codec + Clone> Get<PermissionedActionAllowedBy<AccountId>> for DefaultToAnyone {
-        fn get() -> PermissionedActionAllowedBy<AccountId> {
+    impl Get<PermissionedActionAllowedBy<EthereumAccountId>> for DefaultToAnyone {
+        fn get() -> PermissionedActionAllowedBy<EthereumAccountId> {
             PermissionedActionAllowedBy::Anyone
         }
     }
@@ -79,11 +85,74 @@ mod pallet {
         #[pallet::weight(<T as frame_system::Config>::DbWeight::get().reads_writes(0, 1))]
         pub fn set_contract_creation_allowed_by(
             origin: OriginFor<T>,
-            contract_creation_allowed_by: PermissionedActionAllowedBy<T::AccountId>,
+            contract_creation_allowed_by: PermissionedActionAllowedBy<EthereumAccountId>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ContractCreationAllowedBy::<T>::put(contract_creation_allowed_by);
             Ok(())
+        }
+
+        /// An inherent call to set ContractCreationAllowedBy.
+        #[pallet::call_index(1)]
+        #[pallet::weight((T::DbWeight::get().reads_writes(1, 1), DispatchClass::Mandatory))]
+        pub fn inherent_set_contract_creation_allowed_by(
+            origin: OriginFor<T>,
+            contract_creation_allowed_by: PermissionedActionAllowedBy<EthereumAccountId>,
+        ) -> DispatchResult {
+            ensure_none(origin)?;
+            ContractCreationAllowedBy::<T>::put(contract_creation_allowed_by);
+            Ok(())
+        }
+    }
+
+    #[pallet::inherent]
+    impl<T: Config> ProvideInherent for Pallet<T> {
+        type Call = Call<T>;
+        type Error = InherentError;
+        const INHERENT_IDENTIFIER: InherentIdentifier = INHERENT_IDENTIFIER;
+
+        fn create_inherent(data: &InherentData) -> Option<Self::Call> {
+            let inherent_data = data
+                .get_data::<InherentType>(&INHERENT_IDENTIFIER)
+                .expect("EVM tracker inherent data not correctly encoded")
+                .expect("EVM tracker inherent data must be provided");
+
+            inherent_data
+                .maybe_call
+                .map(|contract_creation_allowed_by| {
+                    Call::inherent_set_contract_creation_allowed_by {
+                        contract_creation_allowed_by,
+                    }
+                })
+        }
+
+        fn is_inherent_required(data: &InherentData) -> Result<Option<Self::Error>, Self::Error> {
+            let inherent_data = data
+                .get_data::<InherentType>(&INHERENT_IDENTIFIER)
+                .expect("EVM tracker inherent data not correctly encoded")
+                .expect("EVM tracker inherent data must be provided");
+
+            Ok(inherent_data
+                .maybe_call
+                .map(|_encoded_call| InherentError::MissingRuntimeCall))
+        }
+
+        fn check_inherent(call: &Self::Call, data: &InherentData) -> Result<(), Self::Error> {
+            let maybe_provided_call = Self::create_inherent(data);
+
+            if let Some(provided_call) = maybe_provided_call {
+                if Self::is_inherent(call) && call != &provided_call {
+                    return Err(InherentError::IncorrectRuntimeCall);
+                }
+            } else {
+                return Err(InherentError::MissingRuntimeCall);
+            }
+
+            Ok(())
+        }
+
+        fn is_inherent(call: &Self::Call) -> bool {
+            matches!(call, Call::inherent_set_contract_creation_allowed_by { .. })
         }
     }
 
@@ -109,7 +178,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns true if the supplied account is allowed to create contracts.
-    pub fn is_allowed_to_create_contracts(signer: &T::AccountId) -> bool {
+    pub fn is_allowed_to_create_contracts(signer: &EthereumAccountId) -> bool {
         ContractCreationAllowedBy::<T>::get().is_allowed(signer)
     }
 
@@ -120,7 +189,7 @@ impl<T: Config> Pallet<T> {
 
     /// Returns the current contract creation allow list.
     /// Mainly used in tests.
-    pub fn contract_creation_allowed_by() -> PermissionedActionAllowedBy<T::AccountId> {
+    pub fn contract_creation_allowed_by() -> PermissionedActionAllowedBy<EthereumAccountId> {
         ContractCreationAllowedBy::<T>::get()
     }
 }

@@ -1,7 +1,9 @@
 //! Provides "fake" runtime API implementation as a workaround for compile-time checks.
 
 use domain_runtime_primitives::opaque::Header as DomainHeader;
-use domain_runtime_primitives::{BlockNumber as DomainNumber, Hash as DomainHash};
+use domain_runtime_primitives::{
+    BlockNumber as DomainNumber, EthereumAccountId, Hash as DomainHash,
+};
 use frame_support::weights::Weight;
 use sp_consensus_subspace::{ChainConstants, PotParameters, SignedVote, SolutionRanges};
 use sp_core::crypto::KeyTypeId;
@@ -9,7 +11,7 @@ use sp_core::{OpaqueMetadata, H256};
 use sp_domains::bundle_producer_election::BundleProducerElectionParams;
 use sp_domains::{
     DomainAllowlistUpdates, DomainId, DomainInstanceData, ExecutionReceiptFor, OperatorId,
-    OperatorPublicKey,
+    OperatorPublicKey, PermissionedActionAllowedBy,
 };
 use sp_domains_fraud_proof::fraud_proof::FraudProof;
 use sp_domains_fraud_proof::storage_proof::FraudProofStorageKeyRequest;
@@ -275,6 +277,10 @@ sp_api::impl_runtime_apis! {
         }
 
         fn domain_sudo_call(_domain_id: DomainId) -> Option<Vec<u8>> {
+            unreachable!()
+        }
+
+        fn evm_domain_contract_creation_allowed_by_call(_domain_id: DomainId) -> Option<PermissionedActionAllowedBy<EthereumAccountId>>{
             unreachable!()
         }
 
