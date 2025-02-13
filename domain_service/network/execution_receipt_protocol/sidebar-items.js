@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["generate_protocol_config","generate_protocol_name"],"struct":["LastConfirmedBlockRequest","LastConfirmedBlockResponse","LastDomainBlockERRequestHandler"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["farmer_service"],"struct":["ClusterFarm","ClusterFarmerIdentifyFarmBroadcast"]};

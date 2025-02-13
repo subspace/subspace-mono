@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["close_channel","initiate_channel","initiate_domain_update_chain_allowlist","relay_message","relay_message_response","update_consensus_chain_allowlist","update_domain_allowlist"]};

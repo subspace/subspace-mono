@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["set_contract_creation_allowed_by"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ProofOfElectionError"],"fn":["calculate_threshold","check_proof_of_election","is_below_threshold","make_transcript"],"struct":["BundleProducerElectionParams"]};

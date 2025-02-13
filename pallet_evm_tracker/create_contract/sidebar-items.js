@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_create_contract","is_create_contract_allowed","is_create_unsigned_contract_allowed"],"struct":["CheckContractCreation"]};

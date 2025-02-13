@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["extract_domain_runtime_upgrade_code","get_inherent_data"],"struct":["CreateInherentDataProvider"]};

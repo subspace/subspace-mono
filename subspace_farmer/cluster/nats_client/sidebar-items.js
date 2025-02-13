@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StreamRequestError"],"struct":["NatsClient","StreamResponseSubscriber","SubscriberWrapper"],"trait":["GenericBroadcast","GenericNotification","GenericRequest","GenericStreamRequest"]};

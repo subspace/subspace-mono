@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_SEGMENT_HEADERS_PER_REQUEST"],"struct":["FarmerAppInfo","ObjectMappingResponse","RewardSignatureResponse","RewardSigningInfo","SlotInfo","SolutionResponse"]};

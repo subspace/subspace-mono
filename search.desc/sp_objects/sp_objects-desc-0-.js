@@ -1,0 +1,1 @@
+searchState.loadedDescShard("sp_objects", 0, "Primitives for Objects.\nExtract block object mapping for a given block")

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["cuda","metrics"],"struct":["GpuPlotter"],"trait":["GpuRecordsEncoder"],"type":["HandlerFn3"]};

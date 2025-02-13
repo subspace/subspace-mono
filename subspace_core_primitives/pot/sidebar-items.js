@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["PotCheckpoints","PotKey","PotOutput","PotSeed"]};

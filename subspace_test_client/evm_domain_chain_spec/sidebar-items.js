@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_account_id_from_seed","get_genesis_domain","testnet_evm_genesis"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["bidirectional_distance","pieces_to_solution_range","solution_range_to_pieces"],"struct":["ChunkWitness","RewardSignature","Solution"],"type":["SolutionRange"]};

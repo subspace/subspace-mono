@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StorageKeyRequest"],"fn":["get_storage_key"],"struct":["HostFunctions","MessengerExtension","MessengerHostFunctionsImpl"],"trait":["MessengerApi"]};

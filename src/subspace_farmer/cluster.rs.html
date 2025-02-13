@@ -1,0 +1,115 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/subspace-farmer/src/cluster.rs`."><title>cluster.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="subspace_farmer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0-nightly (bdc6b3de4 2024-12-23)" data-channel="nightly" data-search-js="search-036cda7a.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="../../static.files/src-script-56102188.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">subspace_farmer/</div>cluster.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
+<a href="#2" id="2">2</a>
+<a href="#3" id="3">3</a>
+<a href="#4" id="4">4</a>
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
+<a href="#49" id="49">49</a>
+<a href="#50" id="50">50</a>
+<a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a></pre></div><pre class="rust"><code><span class="doccomment">//! Cluster version of the farmer
+//!
+//! This module contains isolated set of modules that implement cluster-specific functionality for
+//! the farmer, allowing to distribute cooperating components across machines, while still working
+//! together.
+//!
+//! Specifically, 4 separate components are extracted:
+//! * controller
+//! * farmer
+//! * plotter
+//! * cache
+//!
+//! ### Controller
+//!
+//! Controller connects to the node via RPC and DSN. It handles notifications from node and
+//! orchestrates other components. It will send slot notifications to farmers, store and retrieve
+//! pieces from caches on requests from DSN, etc.
+//!
+//! While there could be multiple controllers shared between farmers, each controller must have its
+//! dedicated pool of caches and each cache should belong to a single controller. This allows to
+//! shut down some controllers for upgrades and other maintenance tasks without affecting farmer's
+//! ability to farm and receive rewards.
+//!
+//! ### Farmer
+//!
+//! Farmer maintains farms with plotted pieces and corresponding metadata. Farmer does audits and
+//! proving, retrieves pieces from plotted sectors on request, but doesn’t do any caching or P2P
+//! networking with DSN. When sectors need to be plotted/replotted, request will be sent to Plotter
+//! to do that instead of doing it locally, though plotter and farmer can be co-located.
+//!
+//! Farmers receive (de-duplicated) slot notifications from all controllers and will send solution
+//! back to the controller from which they received slot notification.
+//!
+//! ### Plotter
+//!
+//! Plotter needs to be able to do heavy compute with proportional amount of RAM for plotting
+//! purposes.
+//!
+//! There could be any number of plotters in a cluster, adding more will increase total cluster
+//! ability to plot concurrent sectors.
+//!
+//! ### Cache
+//!
+//! Cache helps with plotting process and with serving data to DSN. At the same time, writes and
+//! reads are while random, they are done in large size and low frequency comparing in contrast to
+//! farmer. Fast retrieval is important for plotters to not stay idle, but generally cache can work
+//! even on HDDs.
+//!
+//! There could be any number of caches in the cluster, but each cache instance belongs to one of
+//! the controllers. So if multiple controllers are present in the cluster, you'll want at least one
+//! cache connected to each as well for optimal performance.
+
+</span><span class="kw">pub mod </span>cache;
+<span class="kw">pub mod </span>controller;
+<span class="kw">pub mod </span>farmer;
+<span class="kw">pub mod </span>nats_client;
+<span class="kw">pub mod </span>plotter;
+</code></pre></div></section></main></body></html>

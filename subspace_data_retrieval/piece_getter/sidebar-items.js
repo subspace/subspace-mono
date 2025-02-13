@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_pieces_individually"],"trait":["PieceGetter"]};

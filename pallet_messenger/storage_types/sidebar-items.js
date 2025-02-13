@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ChainAllowlist","Channels","DomainChainAllowlistUpdate","Inbox","InboxFee","InboxResponses","MessageWeightTags","NextChannelId","Outbox","OutboxFee","OutboxMessageCount","OutboxResponses","UpdatedChannels"]};

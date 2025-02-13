@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["pallet_transaction_fees",[["impl&lt;T: <a class=\"trait\" href=\"pallet_transaction_fees/trait.Config.html\" title=\"trait pallet_transaction_fees::Config\">Config</a>&gt; StorageFee&lt;&lt;&lt;T as <a class=\"trait\" href=\"pallet_transaction_fees/trait.Config.html\" title=\"trait pallet_transaction_fees::Config\">Config</a>&gt;::<a class=\"associatedtype\" href=\"pallet_transaction_fees/trait.Config.html#associatedtype.Currency\" title=\"type pallet_transaction_fees::Config::Currency\">Currency</a> as Currency&lt;&lt;T as Config&gt;::AccountId&gt;&gt;::Balance&gt; for <a class=\"struct\" href=\"pallet_transaction_fees/struct.Pallet.html\" title=\"struct pallet_transaction_fees::Pallet\">Pallet</a>&lt;T&gt;<div class=\"where\">where\n    &lt;&lt;T as <a class=\"trait\" href=\"pallet_transaction_fees/trait.Config.html\" title=\"trait pallet_transaction_fees::Config\">Config</a>&gt;::<a class=\"associatedtype\" href=\"pallet_transaction_fees/trait.Config.html#associatedtype.Currency\" title=\"type pallet_transaction_fees::Config::Currency\">Currency</a> as Currency&lt;&lt;T as Config&gt;::AccountId&gt;&gt;::Balance: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/convert/trait.From.html\" title=\"trait core::convert::From\">From</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u64.html\">u64</a>&gt;,</div>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1385]}

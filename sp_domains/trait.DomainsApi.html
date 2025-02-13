@@ -1,0 +1,282 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="APIs used to access the domains pallet."><title>DomainsApi in sp_domains - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="sp_domains" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0-nightly (bdc6b3de4 2024-12-23)" data-channel="nightly" data-search-js="search-036cda7a.js" data-settings-js="settings-0f613d39.js" ><script src="../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../sp_domains/index.html">sp_<wbr>domains</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Domains<wbr>Api</a></h2><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.consensus_chain_byte_fee" title="consensus_chain_byte_fee">consensus_chain_byte_fee</a></li><li><a href="#method.consensus_transaction_byte_fee" title="consensus_transaction_byte_fee">consensus_transaction_byte_fee</a></li><li><a href="#method.domain_best_number" title="domain_best_number">domain_best_number</a></li><li><a href="#method.domain_bundle_limit" title="domain_bundle_limit">domain_bundle_limit</a></li><li><a href="#method.domain_instance_data" title="domain_instance_data">domain_instance_data</a></li><li><a href="#method.domain_operators" title="domain_operators">domain_operators</a></li><li><a href="#method.domain_runtime_code" title="domain_runtime_code">domain_runtime_code</a></li><li><a href="#method.domain_sudo_call" title="domain_sudo_call">domain_sudo_call</a></li><li><a href="#method.domain_timestamp" title="domain_timestamp">domain_timestamp</a></li><li><a href="#method.domain_tx_range" title="domain_tx_range">domain_tx_range</a></li><li><a href="#method.execution_receipt" title="execution_receipt">execution_receipt</a></li><li><a href="#method.extract_successful_bundles" title="extract_successful_bundles">extract_successful_bundles</a></li><li><a href="#method.extrinsics_shuffling_seed" title="extrinsics_shuffling_seed">extrinsics_shuffling_seed</a></li><li><a href="#method.genesis_state_root" title="genesis_state_root">genesis_state_root</a></li><li><a href="#method.head_receipt_number" title="head_receipt_number">head_receipt_number</a></li><li><a href="#method.is_bad_er_pending_to_prune" title="is_bad_er_pending_to_prune">is_bad_er_pending_to_prune</a></li><li><a href="#method.is_domain_runtime_upgraded_since" title="is_domain_runtime_upgraded_since">is_domain_runtime_upgraded_since</a></li><li><a href="#method.last_confirmed_domain_block_receipt" title="last_confirmed_domain_block_receipt">last_confirmed_domain_block_receipt</a></li><li><a href="#method.latest_confirmed_domain_block" title="latest_confirmed_domain_block">latest_confirmed_domain_block</a></li><li><a href="#method.non_empty_er_exists" title="non_empty_er_exists">non_empty_er_exists</a></li><li><a href="#method.oldest_unconfirmed_receipt_number" title="oldest_unconfirmed_receipt_number">oldest_unconfirmed_receipt_number</a></li><li><a href="#method.receipt_hash" title="receipt_hash">receipt_hash</a></li><li><a href="#method.runtime_id" title="runtime_id">runtime_id</a></li><li><a href="#method.runtime_upgrades" title="runtime_upgrades">runtime_upgrades</a></li><li><a href="#method.storage_fund_account_balance" title="storage_fund_account_balance">storage_fund_account_balance</a></li><li><a href="#method.submit_bundle_unsigned" title="submit_bundle_unsigned">submit_bundle_unsigned</a></li><li><a href="#method.submit_receipt_unsigned" title="submit_receipt_unsigned">submit_receipt_unsigned</a></li><li><a href="#method.timestamp" title="timestamp">timestamp</a></li></ul><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block trait-implementation"><li><a href="#impl-RuntimeApiInfo-for-dyn+DomainsApi%3CBlock,+DomainHeader%3E" title="RuntimeApiInfo">RuntimeApiInfo</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="index.html">In crate sp_<wbr>domains</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="index.html">sp_domains</a></span><h1>Trait <span class="trait">DomainsApi</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/sp_domains/lib.rs.html#1578-1672">Source</a> </span></div><pre class="rust item-decl"><code>pub trait DomainsApi&lt;Block: BlockT, DomainHeader: HeaderT&gt;: Core&lt;Block&gt; {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 28 methods</span></summary>    // Provided methods
+    fn <a href="#method.submit_bundle_unsigned" class="fn">submit_bundle_unsigned</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        opaque_bundle: <a class="type" href="type.OpaqueBundle.html" title="type sp_domains::OpaqueBundle">OpaqueBundle</a>&lt;NumberFor&lt;Block&gt;, Block::Hash, DomainHeader, Balance&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.submit_receipt_unsigned" class="fn">submit_receipt_unsigned</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        singleton_receipt: <a class="struct" href="struct.SealedSingletonReceipt.html" title="struct sp_domains::SealedSingletonReceipt">SealedSingletonReceipt</a>&lt;NumberFor&lt;Block&gt;, Block::Hash, DomainHeader, Balance&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.extract_successful_bundles" class="fn">extract_successful_bundles</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+        extrinsics: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Block::Extrinsic&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="type.OpaqueBundles.html" title="type sp_domains::OpaqueBundles">OpaqueBundles</a>&lt;Block, DomainHeader, Balance&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.extrinsics_shuffling_seed" class="fn">extrinsics_shuffling_seed</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Randomness, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_runtime_code" class="fn">domain_runtime_code</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.runtime_id" class="fn">runtime_id</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.RuntimeId.html" title="type sp_domains::RuntimeId">RuntimeId</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.runtime_upgrades" class="fn">runtime_upgrades</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="type" href="type.RuntimeId.html" title="type sp_domains::RuntimeId">RuntimeId</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_instance_data" class="fn">domain_instance_data</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(<a class="struct" href="struct.DomainInstanceData.html" title="struct sp_domains::DomainInstanceData">DomainInstanceData</a>, NumberFor&lt;Block&gt;)&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_timestamp" class="fn">domain_timestamp</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Moment, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.timestamp" class="fn">timestamp</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Moment, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.consensus_transaction_byte_fee" class="fn">consensus_transaction_byte_fee</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Balance, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.consensus_chain_byte_fee" class="fn">consensus_chain_byte_fee</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Balance, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_tx_range" class="fn">domain_tx_range</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;U256, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.genesis_state_root" class="fn">genesis_state_root</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;H256&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.head_receipt_number" class="fn">head_receipt_number</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.oldest_unconfirmed_receipt_number" class="fn">oldest_unconfirmed_receipt_number</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_bundle_limit" class="fn">domain_bundle_limit</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DomainBundleLimit.html" title="struct sp_domains::DomainBundleLimit">DomainBundleLimit</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.non_empty_er_exists" class="fn">non_empty_er_exists</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_best_number" class="fn">domain_best_number</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.execution_receipt" class="fn">execution_receipt</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        receipt_hash: <a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.ExecutionReceiptFor.html" title="type sp_domains::ExecutionReceiptFor">ExecutionReceiptFor</a>&lt;DomainHeader, Block, Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_operators" class="fn">domain_operators</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html" title="struct alloc::collections::btree::map::BTreeMap">BTreeMap</a>&lt;<a class="type" href="type.OperatorId.html" title="type sp_domains::OperatorId">OperatorId</a>, Balance&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="type" href="type.OperatorId.html" title="type sp_domains::OperatorId">OperatorId</a>&gt;)&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.receipt_hash" class="fn">receipt_hash</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+        domain_number: <a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.latest_confirmed_domain_block" class="fn">latest_confirmed_domain_block</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;, <a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;)&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.is_bad_er_pending_to_prune" class="fn">is_bad_er_pending_to_prune</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+        receipt_hash: <a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.storage_fund_account_balance" class="fn">storage_fund_account_balance</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        operator_id: <a class="type" href="type.OperatorId.html" title="type sp_domains::OperatorId">OperatorId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Balance, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.is_domain_runtime_upgraded_since" class="fn">is_domain_runtime_upgraded_since</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+        at: NumberFor&lt;Block&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.domain_sudo_call" class="fn">domain_sudo_call</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.last_confirmed_domain_block_receipt" class="fn">last_confirmed_domain_block_receipt</a>(
+        &amp;self,
+        __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+        domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.ExecutionReceiptFor.html" title="type sp_domains::ExecutionReceiptFor">ExecutionReceiptFor</a>&lt;DomainHeader, Block, Balance&gt;&gt;, ApiError&gt; { ... }
+</details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>APIs used to access the domains pallet.</p>
+</div></details><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.submit_bundle_unsigned" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.submit_bundle_unsigned" class="fn">submit_bundle_unsigned</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    opaque_bundle: <a class="type" href="type.OpaqueBundle.html" title="type sp_domains::OpaqueBundle">OpaqueBundle</a>&lt;NumberFor&lt;Block&gt;, Block::Hash, DomainHeader, Balance&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ApiError&gt;</h4></section></summary><div class="docblock"><p>Submits the transaction bundle via an unsigned extrinsic.</p>
+</div></details><section id="method.submit_receipt_unsigned" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.submit_receipt_unsigned" class="fn">submit_receipt_unsigned</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    singleton_receipt: <a class="struct" href="struct.SealedSingletonReceipt.html" title="struct sp_domains::SealedSingletonReceipt">SealedSingletonReceipt</a>&lt;NumberFor&lt;Block&gt;, Block::Hash, DomainHeader, Balance&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ApiError&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.extract_successful_bundles" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.extract_successful_bundles" class="fn">extract_successful_bundles</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    extrinsics: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Block::Extrinsic&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="type.OpaqueBundles.html" title="type sp_domains::OpaqueBundles">OpaqueBundles</a>&lt;Block, DomainHeader, Balance&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Extracts the bundles successfully stored from the given extrinsics.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.extrinsics_shuffling_seed" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.extrinsics_shuffling_seed" class="fn">extrinsics_shuffling_seed</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Randomness, ApiError&gt;</h4></section></summary><div class="docblock"><p>Generates a randomness seed for extrinsics shuffling.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_runtime_code" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_runtime_code" class="fn">domain_runtime_code</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the current WASM bundle for the given <code>domain_id</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.runtime_id" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.runtime_id" class="fn">runtime_id</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.RuntimeId.html" title="type sp_domains::RuntimeId">RuntimeId</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the runtime id for the given <code>domain_id</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.runtime_upgrades" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.runtime_upgrades" class="fn">runtime_upgrades</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="type" href="type.RuntimeId.html" title="type sp_domains::RuntimeId">RuntimeId</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the list of runtime upgrades in the current block.
+Only present in API versions 2 and later.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_instance_data" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_instance_data" class="fn">domain_instance_data</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(<a class="struct" href="struct.DomainInstanceData.html" title="struct sp_domains::DomainInstanceData">DomainInstanceData</a>, NumberFor&lt;Block&gt;)&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the domain instance data for the given <code>domain_id</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_timestamp" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_timestamp" class="fn">domain_timestamp</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Moment, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the current timestamp at the current height.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.timestamp" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.timestamp" class="fn">timestamp</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Moment, ApiError&gt;</h4></section><span class="item-info"><div class="stab deprecated"><span class="emoji">👎</span><span>Deprecated since 3: Use <code>domain_timestamp()</code> instead</span></div></span></summary><div class="docblock"><p>Returns the current timestamp at the current height.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.consensus_transaction_byte_fee" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.consensus_transaction_byte_fee" class="fn">consensus_transaction_byte_fee</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Balance, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the consensus transaction byte fee that will used to charge the domain
+transaction for consensus chain storage fees.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.consensus_chain_byte_fee" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.consensus_chain_byte_fee" class="fn">consensus_chain_byte_fee</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Balance, ApiError&gt;</h4></section><span class="item-info"><div class="stab deprecated"><span class="emoji">👎</span><span>Deprecated since 3: Use <code>consensus_transaction_byte_fee()</code> instead</span></div></span></summary><div class="docblock"><p>Returns the consensus chain byte fee that will used to charge the domain transaction
+for consensus chain storage fees.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_tx_range" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_tx_range" class="fn">domain_tx_range</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;U256, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the current Tx range for the given domain Id.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.genesis_state_root" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.genesis_state_root" class="fn">genesis_state_root</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;H256&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the genesis state root if not pruned.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.head_receipt_number" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.head_receipt_number" class="fn">head_receipt_number</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the best execution chain number.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.oldest_unconfirmed_receipt_number" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.oldest_unconfirmed_receipt_number" class="fn">oldest_unconfirmed_receipt_number</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the block number of oldest unconfirmed execution receipt.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_bundle_limit" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_bundle_limit" class="fn">domain_bundle_limit</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DomainBundleLimit.html" title="struct sp_domains::DomainBundleLimit">DomainBundleLimit</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the domain bundle limit of the given domain.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.non_empty_er_exists" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.non_empty_er_exists" class="fn">non_empty_er_exists</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns true if there are any ERs in the challenge period with non empty extrinsics.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_best_number" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_best_number" class="fn">domain_best_number</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the current best block number for the domain.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.execution_receipt" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.execution_receipt" class="fn">execution_receipt</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    receipt_hash: <a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.ExecutionReceiptFor.html" title="type sp_domains::ExecutionReceiptFor">ExecutionReceiptFor</a>&lt;DomainHeader, Block, Balance&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the execution receipt with the given hash.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_operators" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_operators" class="fn">domain_operators</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html" title="struct alloc::collections::btree::map::BTreeMap">BTreeMap</a>&lt;<a class="type" href="type.OperatorId.html" title="type sp_domains::OperatorId">OperatorId</a>, Balance&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="type" href="type.OperatorId.html" title="type sp_domains::OperatorId">OperatorId</a>&gt;)&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the current epoch and the next epoch operators of the given domain.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.receipt_hash" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.receipt_hash" class="fn">receipt_hash</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    domain_number: <a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the execution receipt hash of the given domain and domain block number.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.latest_confirmed_domain_block" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.latest_confirmed_domain_block" class="fn">latest_confirmed_domain_block</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(<a class="type" href="type.HeaderNumberFor.html" title="type sp_domains::HeaderNumberFor">HeaderNumberFor</a>&lt;DomainHeader&gt;, <a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;)&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the latest confirmed domain block number and hash.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.is_bad_er_pending_to_prune" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.is_bad_er_pending_to_prune" class="fn">is_bad_er_pending_to_prune</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    receipt_hash: <a class="type" href="type.HeaderHashFor.html" title="type sp_domains::HeaderHashFor">HeaderHashFor</a>&lt;DomainHeader&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns if the receipt is exist and pending to prune</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.storage_fund_account_balance" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.storage_fund_account_balance" class="fn">storage_fund_account_balance</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    operator_id: <a class="type" href="type.OperatorId.html" title="type sp_domains::OperatorId">OperatorId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Balance, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the balance of the storage fund account.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.is_domain_runtime_upgraded_since" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.is_domain_runtime_upgraded_since" class="fn">is_domain_runtime_upgraded_since</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+    at: NumberFor&lt;Block&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns true if the given domain’s runtime code has been upgraded since <code>at</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.domain_sudo_call" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.domain_sudo_call" class="fn">domain_sudo_call</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the domain sudo calls for the given domain, if any.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.last_confirmed_domain_block_receipt" class="method"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><h4 class="code-header">fn <a href="#method.last_confirmed_domain_block_receipt" class="fn">last_confirmed_domain_block_receipt</a>(
+    &amp;self,
+    __runtime_api_at_param__: &lt;Block as BlockT&gt;::Hash,
+    domain_id: <a class="struct" href="struct.DomainId.html" title="struct sp_domains::DomainId">DomainId</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="type.ExecutionReceiptFor.html" title="type sp_domains::ExecutionReceiptFor">ExecutionReceiptFor</a>&lt;DomainHeader, Block, Balance&gt;&gt;, ApiError&gt;</h4></section></summary><div class="docblock"><p>Returns the last confirmed domain block execution receipt.</p>
+</div></details></div><h2 id="trait-implementations" class="section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-RuntimeApiInfo-for-dyn+DomainsApi%3CBlock,+DomainHeader%3E" class="impl"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><a href="#impl-RuntimeApiInfo-for-dyn+DomainsApi%3CBlock,+DomainHeader%3E" class="anchor">§</a><h3 class="code-header">impl&lt;Block: BlockT, DomainHeader: HeaderT&gt; RuntimeApiInfo for dyn <a class="trait" href="trait.DomainsApi.html" title="trait sp_domains::DomainsApi">DomainsApi</a>&lt;Block, DomainHeader&gt;</h3></section></summary><div class="impl-items"><details class="toggle" open><summary><section id="associatedconstant.ID" class="associatedconstant trait-impl"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><a href="#associatedconstant.ID" class="anchor">§</a><h4 class="code-header">const <a class="constant">ID</a>: [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.array.html">8</a>]</h4></section></summary><div class='docblock'>The identifier of the runtime api.</div></details><details class="toggle" open><summary><section id="associatedconstant.VERSION" class="associatedconstant trait-impl"><a class="src rightside" href="../src/sp_domains/lib.rs.html#1572-1679">Source</a><a href="#associatedconstant.VERSION" class="anchor">§</a><h4 class="code-header">const <a class="constant">VERSION</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = 3u32</h4></section></summary><div class='docblock'>The version of the runtime api.</div></details></div></details></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../trait.impl/sp_domains/trait.DomainsApi.js" async></script></section></div></main></body></html>

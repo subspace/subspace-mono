@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SectorPlottingProgress"],"mod":["cpu","gpu","pool"],"trait":["Plotter"]};

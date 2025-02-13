@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_SEGMENT_PADDING","MAX_SUPPORTED_OBJECT_LENGTH"],"enum":["Error"],"struct":["ObjectFetcher"]};

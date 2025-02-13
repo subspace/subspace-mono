@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["inherents","stateless_runtime"],"struct":["DomainBlockPreprocessor","PreprocessResult"],"trait":["ValidateReceipt"]};

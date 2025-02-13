@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["RegistryAdapter"],"fn":["start_prometheus_metrics_server"],"struct":["metrics"]};

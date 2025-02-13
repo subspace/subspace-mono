@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["evm_domain_runtime",[["impl <a class=\"trait\" href=\"subspace_runtime_primitives/utility/trait.MaybeIntoUtilityCall.html\" title=\"trait subspace_runtime_primitives::utility::MaybeIntoUtilityCall\">MaybeIntoUtilityCall</a>&lt;<a class=\"struct\" href=\"evm_domain_runtime/struct.Runtime.html\" title=\"struct evm_domain_runtime::Runtime\">Runtime</a>&gt; for <a class=\"enum\" href=\"evm_domain_runtime/enum.RuntimeCall.html\" title=\"enum evm_domain_runtime::RuntimeCall\">RuntimeCall</a>"]]],["evm_domain_test_runtime",[["impl <a class=\"trait\" href=\"subspace_runtime_primitives/utility/trait.MaybeIntoUtilityCall.html\" title=\"trait subspace_runtime_primitives::utility::MaybeIntoUtilityCall\">MaybeIntoUtilityCall</a>&lt;<a class=\"struct\" href=\"evm_domain_test_runtime/struct.Runtime.html\" title=\"struct evm_domain_test_runtime::Runtime\">Runtime</a>&gt; for <a class=\"enum\" href=\"evm_domain_test_runtime/enum.RuntimeCall.html\" title=\"enum evm_domain_test_runtime::RuntimeCall\">RuntimeCall</a>"]]],["subspace_runtime",[["impl <a class=\"trait\" href=\"subspace_runtime_primitives/utility/trait.MaybeIntoUtilityCall.html\" title=\"trait subspace_runtime_primitives::utility::MaybeIntoUtilityCall\">MaybeIntoUtilityCall</a>&lt;<a class=\"struct\" href=\"subspace_runtime/struct.Runtime.html\" title=\"struct subspace_runtime::Runtime\">Runtime</a>&gt; for <a class=\"enum\" href=\"subspace_runtime/enum.RuntimeCall.html\" title=\"enum subspace_runtime::RuntimeCall\">RuntimeCall</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[496,522,487]}
