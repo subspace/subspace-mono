@@ -276,6 +276,16 @@ where
     }
 
     /// Single object fetching and assembling.
+    ///
+    /// Each piece is initially turned into a PartialData struct. When there are enough pieces to
+    /// calculate the object's length(s), those pieces are turned into a PartialObject struct.
+    /// After that, each new piece becomes a PartialData (to track padding and segment headers),
+    /// then gets added to the PartialObject.
+    ///
+    /// When the PartialObject has enough data for its shortest length, the data (and corresponding
+    /// padding) is checked against the object hash. If that fails, we check more padding lengths,
+    /// or fetch more data.
+    //
     // TODO: return last downloaded piece from fetch_object() and pass them to the next fetch_object()
     async fn fetch_object(&self, mapping: GlobalObject) -> Result<Vec<u8>, Error> {
         let GlobalObject {
