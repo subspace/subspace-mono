@@ -26,7 +26,7 @@ use subspace_networking::NodeRunner;
 use tokio::signal;
 use tracing::{debug, warn};
 
-/// The default size limit, based on the maximum block size in some domains.
+/// The default size limit, based on the maximum consensus block size.
 pub const DEFAULT_MAX_SIZE: usize = 5 * 1024 * 1024;
 /// Multiplier on top of outgoing connections number for piece downloading purposes
 const PIECE_PROVIDER_MULTIPLIER: usize = 10;
